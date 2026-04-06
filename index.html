@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<meta name="theme-color" content="#3A2718"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="減脂日誌"/>
+<title>🌿 我的 AI 減脂教練</title>
+<link rel="manifest" href="/manifest.json"/>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#F2EDE4;--card:#FDFAF5;--bd:#E4DAC8;
+  --br:#3A2718;--br2:#7A5C44;--br3:#B89070;
+  --gn:#3D6B4A;--gnL:#EBF4EE;
+  --am:#C47B0A;--amL:#FEF3DC;
+  --rd:#B84040;--rdL:#FDEAEA;
+  --cr:#EAE2D2;--cr2:#F5EFE4;
+  --sh:0 2px 16px rgba(58,39,24,.09);
+  --fn:'M PLUS Rounded 1c','Noto Sans TC',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);font-family:var(--fn);color:var(--br);-webkit-font-smoothing:antialiased;}
+input,button,select{font-family:var(--fn);}
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
+.app{max-width:430px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;}
+
+/* Header */
+.hdr{background:var(--br);position:sticky;top:0;z-index:20;box-shadow:0 2px 16px rgba(0,0,0,.2);}
+.ht{padding:14px 16px 0;display:flex;align-items:center;justify-content:space-between;}
+.nr{display:flex;padding:8px 8px 0;gap:2px;}
+.nb{flex:1;background:transparent;border:none;border-radius:12px 12px 0 0;padding:8px 4px 10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;}
+.nb.on{background:rgba(255,255,255,.15);}
+.nb-ic{font-size:18px;line-height:1;}
+.nb-lb{font-size:11px;font-weight:600;color:rgba(255,255,255,.5);}
+.nb.on .nb-lb{color:#fff;font-weight:800;}
+.nb-dot{width:18px;height:2.5px;background:#F5A623;border-radius:99px;}
+
+/* Page */
+.pg{padding:14px 14px 20px;display:none;}
+.pg.on{display:block;}
+
+/* Card */
+.card{background:var(--card);border-radius:20px;padding:18px;box-shadow:var(--sh);border:1px solid var(--bd);margin-bottom:12px;}
+
+/* Buttons */
+.btn{display:block;width:100%;border:none;border-radius:16px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;text-align:center;}
+.btn:disabled{opacity:.45;cursor:not-allowed;}
+.btn-gn{background:var(--gn);color:#fff;}
+.btn-br{background:var(--br);color:#fff;}
+.btn-rd{background:transparent;color:var(--rd);border:2px solid var(--rd);}
+
+/* Input */
+.inp{border:2px solid var(--bd);border-radius:14px;padding:13px 14px;font-size:15px;font-weight:600;background:var(--card);color:var(--br);outline:none;width:100%;}
+.inp:focus{border-color:var(--gn);}
+
+/* Progress */
+.pbg{background:var(--cr);border-radius:99px;height:12px;overflow:hidden;margin-bottom:6px;}
+.pfill{height:100%;border-radius:99px;transition:width .5s ease;}
+
+/* Chips */
+.chip{display:inline-block;border-radius:99px;padding:6px 13px;font-size:13px;font-weight:700;cursor:pointer;border:1.5px solid var(--bd);background:#fff;color:var(--br2);margin:3px;}
+.chip.on{background:var(--gn);color:#fff;border-color:var(--gn);}
+.pill{display:inline-block;border-radius:99px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;border:none;background:var(--cr2);color:var(--br2);margin:2px;white-space:nowrap;}
+.pill.on{background:var(--br);color:#fff;}
+
+/* Macros */
+.mac-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+
+/* Records */
+.rec-row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;}
+.del-btn{background:var(--rdL);border:none;border-radius:99px;width:26px;height:26px;cursor:pointer;color:var(--rd);font-size:13px;font-weight:800;flex-shrink:0;}
+
+/* Number input */
+.niw{position:relative;}
+.niw input{width:100%;border:2px solid var(--bd);border-radius:14px;padding:13px 30px 13px 14px;font-size:18px;font-weight:800;background:var(--bg);color:var(--br);outline:none;text-align:center;}
+.niw .sx{position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--br3);font-weight:700;pointer-events:none;}
+
+/* BMI bar */
+.bbar{height:8px;border-radius:99px;display:flex;overflow:hidden;margin-bottom:4px;}
+
+/* Scrollable cat bar */
+.cscroll{display:flex;overflow-x:auto;gap:4px;padding-bottom:4px;margin-bottom:10px;-ms-overflow-style:none;scrollbar-width:none;}
+.cscroll::-webkit-scrollbar{display:none;}
+
+/* Alerts */
+.alt-wrap{background:var(--amL);border:2px solid var(--am);border-radius:20px;padding:16px;margin-bottom:12px;}
+.alt-item{background:#fff;border-radius:14px;padding:12px 14px;margin-bottom:8px;border:1px solid var(--bd);display:flex;gap:10px;align-items:center;}
+
+/* Animations */
+@keyframes spin{to{transform:rotate(360deg);}}
+.spin{animation:spin 1s linear infinite;display:inline-block;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ═══ HEADER ═══════════════════════════════════════════════════ -->
+  <header class="hdr">
+    <div class="ht">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:22px;">🌿</span>
+        <div>
+          <div style="color:#fff;font-size:17px;font-weight:900;line-height:1.1;">減脂日誌</div>
+          <div id="today-date" style="color:rgba(255,255,255,.5);font-size:11px;"></div>
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,.12);border-radius:99px;padding:6px 14px;display:flex;align-items:center;gap:6px;">
+        <span style="color:rgba(255,255,255,.7);font-size:11px;font-weight:600;">剩餘</span>
+        <span id="hdr-rem" style="font-size:16px;font-weight:900;color:#8FD9A8;">2000</span>
+        <span style="color:rgba(255,255,255,.5);font-size:11px;">kcal</span>
+      </div>
+    </div>
+    <div class="nr">
+      <button class="nb on" onclick="goPage('dash')">
+        <span class="nb-ic">📊</span><span class="nb-lb">今日</span>
+        <div class="nb-dot"></div>
+      </button>
+      <button class="nb" onclick="goPage('add')" style="font-size:22px;">
+        <span class="nb-ic" style="font-size:22px;">➕</span><span class="nb-lb">新增</span>
+      </button>
+      <button class="nb" onclick="goPage('body')">
+        <span class="nb-ic">💪</span><span class="nb-lb">體態</span>
+      </button>
+      <button class="nb" onclick="goPage('settings')">
+        <span class="nb-ic">⚙️</span><span class="nb-lb">設定</span>
+      </button>
+    </div>
+  </header>
+
+  <main style="flex:1;overflow-y:auto;">
+
+    <!-- ═══ DASHBOARD ═════════════════════════════════════════════ -->
+    <div id="pg-dash" class="pg on">
+
+      <!-- Calorie card -->
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:14px;">
+          <div>
+            <div style="font-size:11px;color:var(--br2);font-weight:700;margin-bottom:4px;">今日已攝取熱量</div>
+            <div id="dash-cal" style="font-size:50px;font-weight:900;color:var(--br);line-height:1;">0</div>
+            <div id="dash-tdee-label" style="font-size:12px;color:var(--br3);margin-top:2px;">目標 2000 kcal</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:11px;color:var(--br2);font-weight:700;">尚可攝取</div>
+            <div id="dash-rem" style="font-size:32px;font-weight:900;color:var(--gn);line-height:1;">2000</div>
+            <div style="font-size:11px;color:var(--br3);">kcal</div>
+          </div>
+        </div>
+        <div class="pbg"><div id="dash-bar" class="pfill" style="width:0%;background:var(--gn);"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--br3);">
+          <span id="dash-pct">0% 已使用</span>
+          <span id="dash-count">0 筆紀錄</span>
+        </div>
+      </div>
+
+      <!-- Macro card -->
+      <div class="card" style="display:flex;align-items:center;gap:14px;">
+        <canvas id="donut" width="88" height="88"></canvas>
+        <div style="flex:1;">
+          <div class="mac-row"><span style="font-size:12px;color:var(--br2);font-weight:600;">🥩 蛋白質</span><span id="m-pro" style="font-weight:900;color:var(--gn);font-size:15px;">0 <small style="font-size:11px;font-weight:600;">g</small></span></div>
+          <div class="mac-row"><span style="font-size:12px;color:var(--br2);font-weight:600;">🧈 脂肪</span><span id="m-fat" style="font-weight:900;color:var(--am);font-size:15px;">0 <small style="font-size:11px;font-weight:600;">g</small></span></div>
+          <div class="mac-row" style="margin-bottom:0;"><span style="font-size:12px;color:var(--br2);font-weight:600;">🍚 碳水</span><span id="m-carb" style="font-weight:900;color:var(--br);font-size:15px;">0 <small style="font-size:11px;font-weight:600;">g</small></span></div>
+        </div>
+      </div>
+
+      <!-- Alternatives -->
+      <div id="alt-loading" style="display:none;" class="card" style="text-align:center;">
+        <div style="text-align:center;color:var(--am);font-weight:700;">🤔 AI 教練正在想對策…</div>
+      </div>
+      <div id="alt-wrap" class="alt-wrap" style="display:none;"></div>
+
+      <!-- Records -->
+      <div class="card">
+        <div style="font-weight:900;font-size:15px;margin-bottom:12px;">📋 今日飲食紀錄</div>
+        <div id="rec-list">
+          <div style="text-align:center;padding:24px 0;color:var(--br3);">
+            <div style="font-size:34px;margin-bottom:8px;">🍽️</div>
+            <div style="font-size:14px;font-weight:600;">還沒有紀錄，快去新增吧！</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ ADD FOOD ═══════════════════════════════════════════════ -->
+    <div id="pg-add" class="pg">
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <div style="flex:1;position:relative;">
+          <input id="food-inp" class="inp" placeholder="搜尋食物名稱…" oninput="onFoodInput(this.value)" onkeydown="if(event.key==='Enter')doSearch()"/>
+          <button id="inp-clear" onclick="clearInput()" style="display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--br3);cursor:pointer;font-size:16px;">✕</button>
+        </div>
+        <div style="position:relative;width:82px;">
+          <input id="gram-inp" type="number" value="100" class="inp" style="padding-left:10px;padding-right:22px;text-align:right;" oninput="onGramChange(this.value)"/>
+          <span style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--br3);font-weight:700;pointer-events:none;">g</span>
+        </div>
+        <button onclick="doSearch()" style="background:var(--br);color:#fff;border:none;border-radius:14px;padding:0 16px;cursor:pointer;font-size:18px;flex-shrink:0;">🔍</button>
+      </div>
+
+      <!-- Autocomplete -->
+      <div id="hits" style="display:none;" class="card" style="padding:0;overflow:hidden;margin-bottom:10px;"></div>
+
+      <!-- Category tabs -->
+      <div id="cat-bar" class="cscroll"></div>
+      <div id="food-chips" style="display:flex;flex-wrap:wrap;margin-bottom:16px;"></div>
+
+      <!-- Photo upload -->
+      <div onclick="document.getElementById('file-inp').click()" style="background:var(--card);border:2px dashed var(--bd);border-radius:20px;padding:20px;text-align:center;cursor:pointer;margin-bottom:12px;">
+        <div id="photo-area">
+          <div style="font-size:34px;margin-bottom:6px;">📷</div>
+          <div style="font-weight:800;font-size:14px;color:var(--br2);">拍照 AI 辨識</div>
+          <div style="font-size:12px;color:var(--br3);margin-top:3px;">點此上傳食物照片</div>
+        </div>
+      </div>
+      <input id="file-inp" type="file" accept="image/*" style="display:none;" onchange="onPhotoSelect(this)"/>
+
+      <!-- Loading -->
+      <div id="ai-loading" style="display:none;text-align:center;padding:20px;">
+        <div class="spin" style="font-size:30px;">🌀</div>
+        <div style="margin-top:8px;color:var(--br2);font-weight:600;font-size:13px;">AI 分析中…</div>
+      </div>
+
+      <!-- Error -->
+      <div id="food-err" style="display:none;background:var(--rdL);border:1px solid var(--rd);border-radius:14px;padding:12px;color:var(--rd);font-size:13px;font-weight:700;margin-bottom:12px;"></div>
+
+      <!-- Food result card -->
+      <div id="food-result" style="display:none;" class="card" style="border:2px solid var(--gn);"></div>
+    </div>
+
+    <!-- ═══ BODY ═══════════════════════════════════════════════════ -->
+    <div id="pg-body" class="pg">
+      <div class="card">
+        <div style="font-weight:900;font-size:15px;margin-bottom:14px;">📝 今日量測</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
+          <div>
+            <div style="font-size:12px;color:var(--br2);font-weight:700;margin-bottom:6px;text-align:center;">身高</div>
+            <div class="niw"><input id="b-h" type="number" placeholder="170" oninput="updateBorder(this)"/><span class="sx">cm</span></div>
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--br2);font-weight:700;margin-bottom:6px;text-align:center;">體重</div>
+            <div class="niw"><input id="b-w" type="number" placeholder="65" oninput="updateBorder(this)"/><span class="sx">kg</span></div>
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--br2);font-weight:700;margin-bottom:6px;text-align:center;">體脂率</div>
+            <div class="niw"><input id="b-f" type="number" placeholder="22" oninput="updateBorder(this)"/><span class="sx">%</span></div>
+          </div>
+        </div>
+        <button class="btn btn-gn" onclick="saveBody()">💾 儲存今日數據</button>
+      </div>
+      <div id="body-stats" style="display:none;"></div>
+      <div id="body-chart-area">
+        <div class="card" style="text-align:center;padding:32px 16px;">
+          <div style="font-size:38px;margin-bottom:10px;">📈</div>
+          <div style="font-weight:800;font-size:14px;color:var(--br2);">輸入今日數據，開始追蹤！</div>
+          <div style="font-size:12px;color:var(--br3);margin-top:6px;">記錄 2 天以上即可看到趨勢圖</div>
+        </div>
+      </div>
+      <div id="body-hist" style="display:none;" class="card">
+        <div style="font-weight:900;font-size:15px;margin-bottom:12px;">🗓️ 歷史紀錄</div>
+        <div id="body-hist-list"></div>
+        <button onclick="clearBodyLogs()" style="margin-top:12px;background:none;border:none;color:var(--rd);font-size:13px;font-weight:700;cursor:pointer;">🗑️ 清除全部紀錄</button>
+      </div>
+    </div>
+
+    <!-- ═══ SETTINGS ═══════════════════════════════════════════════ -->
+    <div id="pg-settings" class="pg">
+      <div class="card">
+        <div style="font-weight:900;font-size:15px;margin-bottom:16px;">個人設定</div>
+        <div style="margin-bottom:16px;">
+          <label style="display:block;font-weight:800;margin-bottom:8px;font-size:13px;color:var(--br2);">🔑 Gemini API Key</label>
+          <input id="st-key" type="password" class="inp" placeholder="貼上你的 API Key"/>
+        </div>
+        <div style="margin-bottom:16px;">
+          <label style="display:block;font-weight:800;margin-bottom:8px;font-size:13px;color:var(--br2);">🔥 每日目標熱量（TDEE）</label>
+          <div style="position:relative;"><input id="st-tdee" type="number" class="inp" placeholder="2000" style="padding-right:52px;"/><span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--br3);font-weight:700;pointer-events:none;">kcal</span></div>
+        </div>
+        <div style="margin-bottom:20px;">
+          <label style="display:block;font-weight:800;margin-bottom:8px;font-size:13px;color:var(--br2);">⚠️ 單餐預警熱量</label>
+          <div style="position:relative;"><input id="st-warn" type="number" class="inp" placeholder="500" style="padding-right:52px;"/><span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--br3);font-weight:700;pointer-events:none;">kcal</span></div>
+        </div>
+        <button class="btn btn-br" onclick="saveSettings()">💾 儲存設定</button>
+      </div>
+      <div class="card" style="background:var(--gnL);border:1px solid #C8DFD0;">
+        <div style="font-weight:800;font-size:13px;color:var(--gn);margin-bottom:8px;">🗂️ 食物資料來源</div>
+        <div style="font-size:12px;color:var(--br2);line-height:1.7;">本 App 收錄台灣衛福部「食品營養成分資料庫 2024」170 種日常食物，數值基準為每 100g 可食部分。</div>
+      </div>
+      <div class="card" style="background:var(--amL);border:1px solid #E8CCAA;">
+        <div style="font-weight:800;font-size:13px;color:var(--am);margin-bottom:8px;">💡 如何取得免費 Gemini API Key？</div>
+        <div style="font-size:12px;color:var(--br2);line-height:1.7;">前往 <b>aistudio.google.com</b> → 登入 Google 帳號 → 點選「Get API Key」即可免費使用。</div>
+      </div>
+      <button class="btn btn-rd" onclick="clearTodayRecs()">🗑️ 清除今日飲食紀錄</button>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════════════════════════
+var DB={
+  "白飯":{c:182,p:3.1,f:0.2,k:41},"即食燕麥片":{c:384,p:11.9,f:9.6,k:67.9},
+  "白饅頭":{c:246,p:8.1,f:1.2,k:51.3},"油條":{c:548,p:10.1,f:40.2,k:37.3},
+  "三角飯糰":{c:215,p:5.8,f:5.5,k:36.6},"牛肉泡麵":{c:470,p:9.6,f:24.5,k:53.6},
+  "鮮蝦泡麵":{c:471,p:9.6,f:23.8,k:55.5},"擔仔麵":{c:119,p:4.4,f:6.5,k:11.9},
+  "炒板條":{c:147,p:4.2,f:4.2,k:23.7},"烏龍麵":{c:126,p:3.4,f:0.3,k:28.2},
+  "油麵":{c:162,p:5.5,f:1.8,k:31.2},"乾麵條":{c:347,p:11.6,f:1.5,k:72.5},
+  "冬粉":{c:349,p:0.1,f:0.1,k:87.5},"米苔目":{c:121,p:0.6,f:0,k:29.6},
+  "粿仔條":{c:193,p:0.5,f:1.2,k:45},"蔥油餅":{c:300,p:8.3,f:9.3,k:46.9},
+  "燒餅":{c:320,p:9.1,f:9.1,k:51.1},"韭菜盒子":{c:214,p:7.5,f:12.1,k:19.5},
+  "水煎包":{c:163,p:4.3,f:5.4,k:25.2},"肉粽":{c:234,p:8.2,f:8.8,k:30.7},
+  "豬血糕":{c:192,p:8.6,f:0.9,k:37.8},"筒仔米糕":{c:244,p:6.6,f:8.6,k:35.5},
+  "微波白飯":{c:167,p:3.2,f:0.3,k:37},"廣東粥":{c:81,p:4.9,f:2.8,k:9.1},
+  "小籠包":{c:239,p:9.6,f:15.5,k:15.9},"火腿蛋三明治":{c:272,p:10.9,f:13.2,k:28.2},
+  "漢堡包":{c:316,p:9.1,f:7.4,k:54.9},"土司":{c:283,p:9.5,f:6.3,k:48.6},
+  "菠蘿麵包":{c:376,p:9.2,f:15,k:51.5},"肉鬆麵包":{c:423,p:8.1,f:22.9,k:47.6},
+  "奶酥麵包":{c:375,p:9.1,f:15.7,k:49.8},"雞里肌":{c:107,p:23.7,f:0.6,k:0},
+  "雞胸肉":{c:117,p:23.3,f:1.9,k:0.6},"雞棒棒腿":{c:160,p:16.8,f:9.7,k:0.3},
+  "豬大里肌":{c:212,p:19.2,f:14.4,k:0},"豬後腿肉":{c:123,p:20.4,f:4,k:0.4},
+  "豬絞肉":{c:218,p:19,f:15.2,k:0},"沙朗牛排":{c:162,p:20.4,f:8.3,k:1.5},
+  "腓力牛排":{c:184,p:20.6,f:10.7,k:0.1},"鯛魚片":{c:110,p:18.2,f:3.6,k:2.5},
+  "鯖魚":{c:417,p:14.4,f:39.4,k:0.2},"秋刀魚":{c:277,p:18.8,f:21.8,k:4.1},
+  "鮭魚":{c:174,p:20.7,f:9.5,k:0},"旗魚":{c:111,p:26,f:0,k:0.8},
+  "白帶魚":{c:102,p:19.6,f:2,k:0},"虱目魚":{c:179,p:21.8,f:9.5,k:0.2},
+  "白蝦":{c:109,p:22.3,f:1.5,k:0},"花枝":{c:61,p:13.8,f:0.2,k:0.8},
+  "文蛤":{c:37,p:7.6,f:0.5,k:2.7},"台灣蜆":{c:51,p:8.9,f:1.4,k:9.8},
+  "牡蠣":{c:54,p:9.4,f:1.6,k:4.2},"豬肝":{c:137,p:20.8,f:5.3,k:1.7},
+  "雞肝":{c:111,p:18.8,f:3.4,k:2.7},"雞胗":{c:89,p:16.6,f:2,k:0.3},
+  "雞蛋":{c:132,p:12.5,f:8.6,k:2},"茶葉蛋":{c:147,p:13.5,f:8.7,k:3.5},
+  "滷蛋":{c:191,p:15.7,f:11.4,k:6.4},"荷包蛋":{c:192,p:13,f:14.9,k:1.6},
+  "水煮蛋":{c:144,p:14,f:9.2,k:1.7},"傳統豆腐":{c:87,p:8.5,f:3.4,k:6},
+  "嫩豆腐":{c:52,p:4.9,f:3,k:1.6},"雞蛋豆腐":{c:79,p:6.9,f:4.6,k:2.7},
+  "五香豆干":{c:192,p:19.3,f:10.6,k:6.2},"無糖豆漿":{c:32,p:3.6,f:1.9,k:0.7},
+  "香腸":{c:354,p:17,f:26.3,k:12.3},"熱狗":{c:257,p:13.3,f:18.1,k:10.2},
+  "豬肉火腿":{c:147,p:16.5,f:4.9,k:9},"培根":{c:373,p:13.5,f:35.6,k:0},
+  "叉燒肉":{c:253,p:17.2,f:13.1,k:16.5},"豬肉乾":{c:329,p:30,f:5,k:41},
+  "貢丸":{c:244,p:16.6,f:20.3,k:0},"旗魚丸":{c:158,p:12.8,f:6.7,k:12},
+  "花枝丸":{c:162,p:12.7,f:7,k:13},"雞塊":{c:228,p:15.3,f:12.9,k:12.6},
+  "天婦羅":{c:176,p:12.4,f:4.7,k:21},"魚板":{c:125,p:10,f:2,k:17.6},
+  "蟹味棒":{c:118,p:9.3,f:0.7,k:18.6},"茄汁鯖魚罐頭":{c:115,p:17.6,f:3.8,k:2.8},
+  "鮪魚罐頭":{c:258,p:10,f:24.1,k:0.9},"烤雞":{c:233,p:22.8,f:14.2,k:3.6},
+  "蚵仔煎":{c:191,p:4.9,f:10.4,k:19.7},"白蘿蔔":{c:17,p:0.4,f:0.1,k:4.4},
+  "胡蘿蔔":{c:32,p:1,f:0.2,k:8.5},"青蔥":{c:26,p:1.1,f:0.2,k:6.8},
+  "白洋蔥":{c:40,p:1,f:0.1,k:10},"菠菜":{c:14,p:2.2,f:0.3,k:2.4},
+  "花椰菜":{c:19,p:1.8,f:0.1,k:4.5},"青花椰菜":{c:23,p:3.7,f:0.2,k:4.4},
+  "高麗菜":{c:22,p:1.4,f:0.2,k:4.9},"地瓜葉":{c:22,p:3.2,f:0.3,k:4.4},
+  "金針菇":{c:33,p:2.6,f:0.3,k:7.2},"鴻喜菇":{c:25,p:2.9,f:0.1,k:5.3},
+  "杏鮑菇":{c:30,p:2.4,f:0.1,k:7.5},"香菇":{c:31,p:3,f:0.2,k:7.1},
+  "木耳":{c:24,p:0.9,f:0.1,k:8.8},"海帶結":{c:12,p:0.8,f:0.1,k:3.6},
+  "玉米筍":{c:29,p:1.8,f:0.2,k:7},"絲瓜":{c:17,p:1.1,f:0.1,k:3.9},
+  "苦瓜":{c:14,p:0.9,f:0.1,k:4.1},"冬瓜":{c:11,p:0.4,f:0.1,k:2.7},
+  "南瓜":{c:46,p:1.7,f:0.2,k:11.1},"茄子":{c:20,p:1.2,f:0.2,k:5.3},
+  "綠豆芽":{c:21,p:2.3,f:0.2,k:4.1},"聖女番茄":{c:31,p:1.1,f:0.5,k:6.9},
+  "牛番茄":{c:17,p:0.7,f:0.1,k:4},"紅甜椒":{c:30,p:0.8,f:0.4,k:7.1},
+  "青椒":{c:19,p:0.8,f:0.3,k:4.9},"香蕉":{c:82,p:1.5,f:0.1,k:22.1},
+  "木瓜":{c:36,p:0.6,f:0.1,k:9.9},"珍珠芭樂":{c:36,p:0.7,f:0.2,k:10.6},
+  "西瓜":{c:34,p:0.8,f:0.1,k:8.7},"鳳梨":{c:49,p:0.5,f:0.1,k:13.2},
+  "奇異果":{c:52,p:1.1,f:0.3,k:14},"草莓":{c:36,p:1,f:0.2,k:9.3},
+  "葡萄":{c:63,p:0.5,f:0.3,k:16.6},"柳橙":{c:40,p:0.8,f:0.1,k:11},
+  "蘋果":{c:47,p:0.2,f:0.1,k:13.1},"愛文芒果":{c:41,p:0.4,f:0.2,k:11},
+  "蓮霧":{c:38,p:0.4,f:0.3,k:10},"龍眼":{c:69,p:1.1,f:0.4,k:18},
+  "荔枝":{c:64,p:1,f:0.2,k:16.5},"全脂牛奶":{c:63,p:3.1,f:3.6,k:4.8},
+  "低脂牛奶":{c:43,p:3.3,f:1.1,k:5},"全脂優格":{c:97,p:3.1,f:3.3,k:13.6},
+  "低脂優格":{c:63,p:3,f:0.4,k:12.1},"起司片":{c:309,p:18.3,f:23.7,k:5.9},
+  "珍珠奶茶(全糖)":{c:94,p:0.2,f:2.4,k:17.9},"珍珠奶茶(半糖)":{c:84,p:0.2,f:2.7,k:14.5},
+  "珍珠奶茶(微糖)":{c:75,p:0.2,f:2.3,k:13.5},"烏龍奶茶(全糖)":{c:75,p:0.2,f:2.8,k:12.3},
+  "無糖鮮奶茶":{c:27,p:2,f:1.4,k:1.4},"美式咖啡":{c:2,p:0.2,f:0.1,k:0.3},
+  "無糖拿鐵":{c:43,p:3,f:2,k:3.4},"三合一咖啡":{c:39,p:0.9,f:0.4,k:8.2},
+  "有糖豆漿":{c:56,p:3.2,f:1.3,k:9},"鹹豆漿":{c:37,p:3.5,f:1.8,k:1.7},
+  "100%柳橙汁":{c:47,p:0.6,f:0.3,k:10.7},"烏龍茶(全糖)":{c:36,p:0.1,f:0,k:8.8},
+  "烏龍茶(半糖)":{c:21,p:0.1,f:0,k:5.2},"乳酸飲料":{c:45,p:0.2,f:0,k:11},
+  "洋芋片":{c:549,p:5.2,f:34.3,k:55.8},"蔬菜蘇打餅":{c:506,p:7.8,f:24.7,k:64.5},
+  "夾心餅乾":{c:514,p:4.8,f:27.4,k:62.8},"牛奶巧克力":{c:547,p:9.4,f:32.6,k:54},
+  "黑巧克力85%":{c:585,p:10.9,f:46.1,k:38.7},"香草冰淇淋":{c:182,p:2.5,f:9.1,k:22.6},
+  "巧克力冰淇淋":{c:192,p:4.2,f:10.6,k:19.9},"紅豆牛奶冰棒":{c:152,p:3.5,f:4.9,k:24.3},
+  "仙草凍":{c:19,p:0.9,f:0.1,k:3.7},"鮮奶布丁":{c:110,p:3,f:5.1,k:13.1},
+  "花生豆花":{c:59,p:2,f:0.9,k:10.9},"銅鑼燒":{c:328,p:3.4,f:9.9,k:57.2},
+  "紅豆車輪餅":{c:174,p:2.1,f:1.1,k:42.3},"蛋塔":{c:373,p:4.1,f:21.7,k:41.1},
+  "蛋黃酥":{c:457,p:11.4,f:26.4,k:44.5},"鳳梨酥":{c:481,p:4.2,f:24.4,k:62},
+  "番茄醬":{c:111,p:1.6,f:0.1,k:26.7},"沙茶醬":{c:721,p:10.2,f:71.8,k:10.4},
+  "花生醬":{c:635,p:24,f:54.3,k:17.9},"肉燥":{c:397,p:9.5,f:38,k:4.2}
+};
+
+var CATS={
+  "🍚 主食":["白飯","即食燕麥片","白饅頭","油條","三角飯糰","牛肉泡麵","鮮蝦泡麵","擔仔麵","炒板條","烏龍麵","油麵","乾麵條","冬粉","米苔目","粿仔條","蔥油餅","燒餅","韭菜盒子","水煎包","肉粽","豬血糕","筒仔米糕","微波白飯","廣東粥","小籠包","火腿蛋三明治","漢堡包","土司","菠蘿麵包","肉鬆麵包","奶酥麵包"],
+  "🥩 肉蛋海鮮":["雞里肌","雞胸肉","雞棒棒腿","豬大里肌","豬後腿肉","豬絞肉","沙朗牛排","腓力牛排","鯛魚片","鯖魚","秋刀魚","鮭魚","旗魚","白帶魚","虱目魚","白蝦","花枝","文蛤","台灣蜆","牡蠣","豬肝","雞肝","雞胗","雞蛋","茶葉蛋","滷蛋","荷包蛋","水煮蛋"],
+  "🫘 豆製加工":["傳統豆腐","嫩豆腐","雞蛋豆腐","五香豆干","無糖豆漿","香腸","熱狗","豬肉火腿","培根","叉燒肉","豬肉乾","貢丸","旗魚丸","花枝丸","雞塊","天婦羅","魚板","蟹味棒","茄汁鯖魚罐頭","鮪魚罐頭","烤雞","蚵仔煎"],
+  "🥦 蔬菜菇藻":["白蘿蔔","胡蘿蔔","青蔥","白洋蔥","菠菜","花椰菜","青花椰菜","高麗菜","地瓜葉","金針菇","鴻喜菇","杏鮑菇","香菇","木耳","海帶結","玉米筍","絲瓜","苦瓜","冬瓜","南瓜","茄子","綠豆芽","聖女番茄","牛番茄","紅甜椒","青椒"],
+  "🍎 水果":["香蕉","木瓜","珍珠芭樂","西瓜","鳳梨","奇異果","草莓","葡萄","柳橙","蘋果","愛文芒果","蓮霧","龍眼","荔枝"],
+  "🥛 乳品":["全脂牛奶","低脂牛奶","全脂優格","低脂優格","起司片"],
+  "🧋 飲料":["珍珠奶茶(全糖)","珍珠奶茶(半糖)","珍珠奶茶(微糖)","烏龍奶茶(全糖)","無糖鮮奶茶","美式咖啡","無糖拿鐵","三合一咖啡","有糖豆漿","鹹豆漿","100%柳橙汁","烏龍茶(全糖)","烏龍茶(半糖)","乳酸飲料"],
+  "🍡 點心":["洋芋片","蔬菜蘇打餅","夾心餅乾","牛奶巧克力","黑巧克力85%","香草冰淇淋","巧克力冰淇淋","紅豆牛奶冰棒","仙草凍","鮮奶布丁","花生豆花","銅鑼燒","紅豆車輪餅","蛋塔","蛋黃酥","鳳梨酥"],
+  "🫙 調味":["番茄醬","沙茶醬","花生醬","肉燥"]
+};
+
+// ══════════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════════
+var state={
+  tdee: Number(localStorage.getItem('tdee')||2000),
+  warn: Number(localStorage.getItem('warn')||500),
+  apiKey: localStorage.getItem('apiKey')||'',
+  records: JSON.parse(localStorage.getItem('recs_'+new Date().toDateString())||'[]'),
+  bodyLogs: JSON.parse(localStorage.getItem('body_logs')||'[]'),
+  currentFood: null,
+  currentCat: '🍚 主食'
+};
+
+function saveRecs(){localStorage.setItem('recs_'+new Date().toDateString(),JSON.stringify(state.records));}
+
+// ══════════════════════════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════════════════════════
+function goPage(id){
+  document.querySelectorAll('.pg').forEach(function(el){el.classList.remove('on');});
+  document.getElementById('pg-'+id).classList.add('on');
+  document.querySelectorAll('.nb').forEach(function(el){el.classList.remove('on');el.querySelector('.nb-dot')&&el.querySelector('.nb-dot').remove();});
+  var pages=['dash','add','body','settings'];
+  var idx=pages.indexOf(id);
+  var btns=document.querySelectorAll('.nb');
+  btns[idx].classList.add('on');
+  if(!btns[idx].querySelector('.nb-dot')){var d=document.createElement('div');d.className='nb-dot';btns[idx].appendChild(d);}
+  if(id==='body') renderBodyPage();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════
+function init(){
+  // date
+  document.getElementById('today-date').textContent=new Date().toLocaleDateString('zh-TW',{month:'long',day:'numeric',weekday:'short'});
+  // settings fields
+  document.getElementById('st-key').value=state.apiKey;
+  document.getElementById('st-tdee').value=state.tdee;
+  document.getElementById('st-warn').value=state.warn;
+  // categories
+  var bar=document.getElementById('cat-bar');
+  bar.innerHTML='';
+  Object.keys(CATS).forEach(function(cat){
+    var b=document.createElement('button');
+    b.className='pill'+(cat===state.currentCat?' on':'');
+    b.textContent=cat;
+    b.onclick=function(){state.currentCat=cat;renderChips();document.querySelectorAll('.pill').forEach(function(x){x.classList.remove('on');});b.classList.add('on');};
+    bar.appendChild(b);
+  });
+  renderChips();
+  renderDash();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════════════════════
+function renderDash(){
+  var tot={c:0,p:0,f:0,k:0};
+  state.records.forEach(function(r){tot.c+=r.c;tot.p+=r.p;tot.f+=r.f;tot.k+=r.k;});
+  var rem=state.tdee-tot.c;
+  var pct=Math.min(tot.c/state.tdee,1);
+  document.getElementById('dash-cal').textContent=tot.c;
+  document.getElementById('dash-cal').style.color=rem<0?'var(--rd)':'var(--br)';
+  document.getElementById('dash-rem').textContent=rem;
+  document.getElementById('dash-rem').style.color=rem<0?'var(--rd)':'var(--gn)';
+  document.getElementById('dash-tdee-label').textContent='目標 '+state.tdee+' kcal';
+  document.getElementById('dash-bar').style.width=pct*100+'%';
+  document.getElementById('dash-bar').style.background=pct>.9?'var(--rd)':pct>.7?'var(--am)':'var(--gn)';
+  document.getElementById('dash-pct').textContent=Math.round(pct*100)+'% 已使用';
+  document.getElementById('dash-count').textContent=state.records.length+' 筆紀錄';
+  document.getElementById('hdr-rem').textContent=rem;
+  document.getElementById('hdr-rem').style.color=rem<0?'#FF8080':'#8FD9A8';
+  document.getElementById('m-pro').innerHTML=tot.p+' <small style="font-size:11px;font-weight:600;">g</small>';
+  document.getElementById('m-fat').innerHTML=tot.f+' <small style="font-size:11px;font-weight:600;">g</small>';
+  document.getElementById('m-carb').innerHTML=tot.k+' <small style="font-size:11px;font-weight:600;">g</small>';
+  drawDonut(tot.p,tot.f,tot.k);
+  renderRecords();
+}
+
+function drawDonut(p,f,k){
+  var cv=document.getElementById('donut');
+  var ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,88,88);
+  var cx=44,cy=44,r=34,inner=20;
+  var total=p*4+f*9+k*4||1;
+  var segs=[[p*4/total,'#3D6B4A'],[f*9/total,'#C47B0A'],[k*4/total,'#3A2718']];
+  var start=-Math.PI/2;
+  // background
+  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fillStyle='#EAE2D2';ctx.fill();
+  segs.forEach(function(s){
+    if(s[0]<=0)return;
+    var end=start+s[0]*Math.PI*2;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,start,end);ctx.closePath();ctx.fillStyle=s[1];ctx.fill();
+    start=end;
+  });
+  // hole
+  ctx.beginPath();ctx.arc(cx,cy,inner,0,Math.PI*2);ctx.fillStyle='#FDFAF5';ctx.fill();
+}
+
+function renderRecords(){
+  var el=document.getElementById('rec-list');
+  if(state.records.length===0){
+    el.innerHTML='<div style="text-align:center;padding:24px 0;color:var(--br3);"><div style="font-size:34px;margin-bottom:8px;">🍽️</div><div style="font-size:14px;font-weight:600;">還沒有紀錄，快去新增吧！</div></div>';
+    return;
+  }
+  el.innerHTML=state.records.map(function(r,i){
+    return '<div class="rec-row" style="border-bottom:'+(i<state.records.length-1?'1px solid var(--bd)':'none')+'">'
+      +'<div style="flex:1;min-width:0;">'
+        +'<div style="font-weight:800;font-size:14px;margin-bottom:2px;">'+r.name+'</div>'
+        +'<div style="font-size:11px;color:var(--br3);">'+r.unit+' · 蛋白 '+r.p+'g · 脂 '+r.f+'g · 碳水 '+r.k+'g</div>'
+      +'</div>'
+      +'<div style="display:flex;align-items:center;gap:6px;margin-left:8px;">'
+        +'<span style="font-weight:900;font-size:16px;color:var(--br);">'+r.c+'</span>'
+        +'<span style="font-size:10px;color:var(--br3);">kcal</span>'
+        +'<button class="del-btn" onclick="delRec('+r.id+')">✕</button>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
+
+function delRec(id){
+  state.records=state.records.filter(function(r){return r.id!==id;});
+  saveRecs();renderDash();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ADD FOOD
+// ══════════════════════════════════════════════════════════════════
+function renderChips(){
+  var el=document.getElementById('food-chips');
+  var foods=CATS[state.currentCat]||[];
+  el.innerHTML=foods.map(function(n){
+    var on=state.currentFood&&state.currentFood.name===n?' on':'';
+    return '<button class="chip'+on+'" onclick="pickFood(\''+n.replace(/'/g,"\\'")+'\')">'+''+n+'</button>';
+  }).join('');
+}
+
+function onFoodInput(v){
+  document.getElementById('inp-clear').style.display=v?'block':'none';
+  state.currentFood=null;
+  document.getElementById('food-result').style.display='none';
+  document.getElementById('food-err').style.display='none';
+  if(!v.trim()){document.getElementById('hits').style.display='none';return;}
+  var results=Object.keys(DB).filter(function(k){return k.includes(v)||v.split('').every(function(c){return k.includes(c);});}).slice(0,8);
+  var el=document.getElementById('hits');
+  if(results.length===0){el.style.display='none';return;}
+  el.style.display='block';
+  el.innerHTML='<div style="border-radius:20px;overflow:hidden;">'+results.map(function(n,i){
+    return '<div onclick="pickFood(\''+n.replace(/'/g,"\\'")+'\')" style="padding:12px 16px;border-bottom:'+(i<results.length-1?'1px solid var(--bd)':'none')+';cursor:pointer;display:flex;justify-content:space-between;align-items:center;">'
+      +'<span style="font-weight:700;font-size:14px;">'+n+'</span>'
+      +'<span style="font-size:11px;color:var(--br3);background:var(--cr);border-radius:99px;padding:3px 10px;font-weight:600;">'+DB[n].c+' kcal/100g</span>'
+    +'</div>';
+  }).join('')+'</div>';
+}
+
+function clearInput(){
+  document.getElementById('food-inp').value='';
+  document.getElementById('inp-clear').style.display='none';
+  document.getElementById('hits').style.display='none';
+  state.currentFood=null;
+  document.getElementById('food-result').style.display='none';
+  renderChips();
+}
+
+function pickFood(name){
+  var g=Number(document.getElementById('gram-inp').value)||100;
+  var b=DB[name];var s=g/100;
+  state.currentFood={name:name,unit:g+'g',c:Math.round(b.c*s),p:+(b.p*s).toFixed(1),f:+(b.f*s).toFixed(1),k:+(b.k*s).toFixed(1),_b:b};
+  document.getElementById('food-inp').value=name;
+  document.getElementById('hits').style.display='none';
+  document.getElementById('inp-clear').style.display='block';
+  showFoodResult();
+  renderChips();
+}
+
+function onGramChange(v){
+  if(!state.currentFood||!state.currentFood._b)return;
+  var g=Number(v)||100;var s=g/100;var b=state.currentFood._b;
+  state.currentFood.unit=g+'g';
+  state.currentFood.c=Math.round(b.c*s);
+  state.currentFood.p=+(b.p*s).toFixed(1);
+  state.currentFood.f=+(b.f*s).toFixed(1);
+  state.currentFood.k=+(b.k*s).toFixed(1);
+  showFoodResult();
+}
+
+function showFoodResult(){
+  var fd=state.currentFood;if(!fd)return;
+  var el=document.getElementById('food-result');
+  el.style.display='block';
+  el.style.border='2px solid var(--gn)';
+  el.innerHTML=
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">'
+      +'<div style="font-weight:900;font-size:18px;">'+fd.name+'</div>'
+      +'<div style="font-size:11px;color:var(--br3);background:var(--cr);border-radius:99px;padding:3px 10px;font-weight:700;flex-shrink:0;margin-left:8px;">📋 衛福部資料</div>'
+    +'</div>'
+    +'<div style="font-size:12px;color:var(--br3);margin-bottom:14px;font-weight:600;">'+fd.unit+'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">'
+      +[['熱量',fd.c,'kcal','var(--br)'],['蛋白質',fd.p,'g','var(--gn)'],['脂肪',fd.f,'g','var(--am)'],['碳水',fd.k,'g','var(--br2)']].map(function(x){
+        return '<div style="background:var(--cr2);border-radius:14px;padding:10px 4px;text-align:center;">'
+          +'<div style="font-size:18px;font-weight:900;color:'+x[3]+';line-height:1.1;">'+x[1]+'</div>'
+          +'<div style="font-size:9px;color:var(--br3);margin-top:1px;">'+x[2]+'</div>'
+          +'<div style="font-size:10px;color:var(--br2);margin-top:2px;font-weight:600;">'+x[0]+'</div>'
+        +'</div>';
+      }).join('')
+    +'</div>'
+    +'<button class="btn btn-gn" onclick="addRecord()">✅ 加入今日紀錄</button>';
+}
+
+async function doSearch(){
+  var v=document.getElementById('food-inp').value.trim();
+  if(!v)return;
+  document.getElementById('food-err').style.display='none';
+  document.getElementById('hits').style.display='none';
+  var exact=Object.keys(DB).find(function(k){return k===v||v.includes(k)||k.includes(v);});
+  if(exact){pickFood(exact);return;}
+  if(!state.apiKey){
+    document.getElementById('food-err').style.display='block';
+    document.getElementById('food-err').textContent='找不到食物！請先在設定頁面填入 Gemini API Key。';
+    return;
+  }
+  document.getElementById('ai-loading').style.display='block';
+  document.getElementById('food-result').style.display='none';
+  try{
+    var prompt='請分析食物「'+v+'」的營養，回傳純JSON（無markdown）：{"name":"...","unit":"...","calories":數字,"protein":數字,"fat":數字,"carbs":數字}';
+    var r=await callGemini(prompt);
+    state.currentFood={name:r.name,unit:r.unit,c:r.calories,p:r.protein,f:r.fat,k:r.carbs,_b:null};
+    showFoodResult();
+  }catch(e){
+    document.getElementById('food-err').style.display='block';
+    document.getElementById('food-err').textContent='AI 辨識失敗，請確認 API Key 是否正確。';
+  }
+  document.getElementById('ai-loading').style.display='none';
+}
+
+async function onPhotoSelect(input){
+  var file=input.files[0];if(!file)return;
+  document.getElementById('food-err').style.display='none';
+  if(!state.apiKey){
+    document.getElementById('food-err').style.display='block';
+    document.getElementById('food-err').textContent='請先在設定頁面填入 Gemini API Key。';
+    return;
+  }
+  var reader=new FileReader();
+  reader.onload=async function(e){
+    var b64=e.target.result.split(',')[1];
+    document.getElementById('photo-area').innerHTML='<img src="'+e.target.result+'" style="max-height:160px;border-radius:14px;object-fit:cover;"/>';
+    document.getElementById('ai-loading').style.display='block';
+    document.getElementById('food-result').style.display='none';
+    try{
+      var r=await callGeminiImage(b64,file.type);
+      state.currentFood={name:r.name,unit:r.unit,c:r.calories,p:r.protein,f:r.fat,k:r.carbs,_b:null};
+      showFoodResult();
+    }catch(ex){
+      document.getElementById('food-err').style.display='block';
+      document.getElementById('food-err').textContent='圖片辨識失敗，請重試。';
+    }
+    document.getElementById('ai-loading').style.display='none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function addRecord(){
+  if(!state.currentFood)return;
+  var r=Object.assign({id:Date.now()},state.currentFood);
+  state.records.push(r);
+  saveRecs();
+  renderDash();
+  goPage('dash');
+  state.currentFood=null;
+  document.getElementById('food-result').style.display='none';
+  document.getElementById('food-inp').value='';
+  document.getElementById('inp-clear').style.display='none';
+  renderChips();
+  // check warning
+  if(r.c>=state.warn) showAlts(r);
+}
+
+async function showAlts(r){
+  var altWrap=document.getElementById('alt-wrap');
+  document.getElementById('alt-loading').style.display='block';
+  var alts=state.apiKey?null:null;
+  if(!state.apiKey){
+    alts=[
+      {name:'御飯糰',where:'7-11 / 全家',calories:190,reason:'🍙 方便抗餓，荷包感謝你！'},
+      {name:'茶葉蛋',where:'便利商店',calories:75,reason:'🥚 蛋白質滿，卡路里少得可憐～'},
+      {name:'無糖豆漿',where:'全聯',calories:60,reason:'🥛 喝一杯，身材不走樣！'}
+    ];
+  } else {
+    try{
+      alts=await callGemini('食物「'+r.name+'」熱量約'+r.c+'大卡，太高了！以台灣生活圈（7-11、全家、全聯、路邊攤）給出3個低熱量替代品，語氣幽默。回傳純JSON：[{"name":"名稱","where":"在哪買","calories":數字,"reason":"幽默說明"},...]');
+    }catch(e){alts=[];}
+  }
+  document.getElementById('alt-loading').style.display='none';
+  if(!alts||!alts.length)return;
+  altWrap.style.display='block';
+  altWrap.innerHTML=
+    '<div style="font-weight:900;font-size:15px;color:var(--am);margin-bottom:4px;">⚠️ 熱量有點高喔！</div>'
+    +'<div style="font-size:13px;color:var(--br2);margin-bottom:12px;">AI 教練推薦台灣生活圈好選擇：</div>'
+    +alts.map(function(a,i){
+      return '<div class="alt-item">'
+        +'<div style="flex:1;">'
+          +'<div style="font-weight:800;font-size:14px;">'+a.name+' <span style="font-size:11px;color:var(--br3);font-weight:500;">'+a.calories+' kcal</span></div>'
+          +'<div style="font-size:11px;color:var(--gn);margin-top:2px;font-weight:600;">📍 '+a.where+'</div>'
+          +'<div style="font-size:11px;color:var(--br2);margin-top:3px;">'+a.reason+'</div>'
+        +'</div>'
+        +'<button onclick="replaceWithAlt('+i+','+JSON.stringify(a).replace(/"/g,'&quot;')+')" style="background:var(--gn);color:#fff;border:none;border-radius:12px;padding:8px 12px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">替換</button>'
+      +'</div>';
+    }).join('')
+    +'<button onclick="document.getElementById(\'alt-wrap\').style.display=\'none\'" style="width:100%;background:none;border:none;color:var(--br3);font-size:12px;font-weight:600;cursor:pointer;margin-top:4px;">今天就這樣吧 🤷</button>';
+}
+
+function replaceWithAlt(i,a){
+  if(state.records.length>0) state.records.pop();
+  state.records.push({id:Date.now(),name:a.name,c:a.calories,p:5,f:3,k:20,unit:'1份'});
+  saveRecs();renderDash();
+  document.getElementById('alt-wrap').style.display='none';
+}
+
+// ══════════════════════════════════════════════════════════════════
+// BODY PAGE
+// ══════════════════════════════════════════════════════════════════
+function updateBorder(el){el.style.borderColor=el.value?'var(--gn)':'var(--bd)';}
+
+function saveBody(){
+  var hv=+document.getElementById('b-h').value;
+  var wv=+document.getElementById('b-w').value;
+  var fv=+document.getElementById('b-f').value;
+  if(!hv||!wv||!fv){alert('請填入身高、體重和體脂率！');return;}
+  var dk=new Date().toDateString();
+  var d=new Date().toLocaleDateString('zh-TW',{month:'2-digit',day:'2-digit'});
+  var e={dk:dk,d:d,h:hv,w:wv,f:fv};
+  var idx=state.bodyLogs.findIndex(function(x){return x.dk===dk;});
+  idx>=0?state.bodyLogs[idx]=e:state.bodyLogs.push(e);
+  state.bodyLogs=state.bodyLogs.slice(-30);
+  localStorage.setItem('body_logs',JSON.stringify(state.bodyLogs));
+  var btn=document.querySelector('#pg-body .btn-gn');
+  btn.textContent='✅ 已儲存！';setTimeout(function(){btn.textContent='💾 儲存今日數據';},2000);
+  renderBodyPage();
+}
+
+function renderBodyPage(){
+  var logs=state.bodyLogs;
+  var lat=logs[logs.length-1],pr=logs[logs.length-2];
+  var statsEl=document.getElementById('body-stats');
+
+  if(!lat){statsEl.style.display='none';return;}
+  statsEl.style.display='block';
+
+  var bmi=+(lat.w/(lat.h/100)**2).toFixed(1);
+  var bmiColor=bmi<18.5?'#4A90D9':bmi<24?'var(--gn)':bmi<27?'var(--am)':'var(--rd)';
+  var bmiLabel=bmi<18.5?'過輕':bmi<24?'正常':bmi<27?'過重':'肥胖';
+  var bmiEmoji=bmi<18.5?'😟':bmi<24?'😊':bmi<27?'😐':'😅';
+  var wD=pr?+(lat.w-pr.w).toFixed(1):null;
+  var fD=pr?+(lat.f-pr.f).toFixed(1):null;
+  var bmiPct=Math.min(Math.max((bmi-14)/22,0),1)*100;
+
+  statsEl.innerHTML=
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">'
+      +'<div class="card" style="padding:16px;margin-bottom:0;">'
+        +'<div style="font-size:11px;color:var(--br2);font-weight:700;margin-bottom:8px;">⚖️ 體重</div>'
+        +'<div style="display:flex;align-items:baseline;gap:3px;"><span style="font-size:34px;font-weight:900;color:var(--br);line-height:1;">'+lat.w+'</span><span style="font-size:13px;color:var(--br2);">kg</span></div>'
+        +(wD!==null?'<div style="margin-top:7px;font-size:12px;font-weight:800;color:'+(wD<0?'var(--gn)':wD>0?'var(--rd)':'var(--br2)')+';">'+(wD<0?'↓ '+Math.abs(wD)+' kg 🎉':wD>0?'↑ '+wD+' kg':'→ 持平')+'</div>':'')
+      +'</div>'
+      +'<div class="card" style="padding:16px;margin-bottom:0;">'
+        +'<div style="font-size:11px;color:var(--br2);font-weight:700;margin-bottom:8px;">🔥 體脂率</div>'
+        +'<div style="display:flex;align-items:baseline;gap:3px;"><span style="font-size:34px;font-weight:900;color:var(--am);line-height:1;">'+lat.f+'</span><span style="font-size:13px;color:var(--br2);">%</span></div>'
+        +(fD!==null?'<div style="margin-top:7px;font-size:12px;font-weight:800;color:'+(fD<0?'var(--gn)':fD>0?'var(--rd)':'var(--br2)')+';">'+(fD<0?'↓ '+Math.abs(fD)+'% 🔥':fD>0?'↑ '+fD+'%':'→ 持平')+'</div>':'')
+      +'</div>'
+    +'</div>'
+    +'<div class="card" style="margin-bottom:10px;">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">'
+        +'<div>'
+          +'<div style="font-size:11px;color:var(--br2);font-weight:700;margin-bottom:5px;">📐 BMI 指數</div>'
+          +'<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:40px;font-weight:900;color:'+bmiColor+';line-height:1;">'+bmi+'</span><span style="font-size:12px;font-weight:800;color:'+bmiColor+';background:'+bmiColor+'20;border-radius:99px;padding:3px 10px;">'+bmiLabel+'</span></div>'
+          +'<div style="font-size:11px;color:var(--br3);margin-top:5px;">'+lat.h+' cm · '+lat.w+' kg</div>'
+        +'</div>'
+        +'<div style="font-size:44px;">'+bmiEmoji+'</div>'
+      +'</div>'
+      +'<div class="bbar"><div style="flex:1.1;background:#4A90D9;"></div><div style="flex:1.1;background:var(--gn);"></div><div style="flex:.6;background:var(--am);"></div><div style="flex:.8;background:var(--rd);"></div></div>'
+      +'<div style="position:relative;height:16px;"><div style="position:absolute;font-size:15px;transform:translateX(-50%);left:'+bmiPct+'%;">▲</div></div>'
+      +'<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--br3);"><span>過輕</span><span>正常</span><span>過重</span><span>肥胖</span></div>'
+    +'</div>';
+
+  // Chart area
+  var ca=document.getElementById('body-chart-area');
+  if(logs.length<2){
+    ca.innerHTML='<div class="card" style="text-align:center;padding:32px 16px;"><div style="font-size:38px;margin-bottom:10px;">📈</div><div style="font-weight:800;font-size:14px;color:var(--br2);">再記錄 '+(2-logs.length)+' 天就能看到趨勢圖！</div></div>';
+  } else {
+    var maxW=Math.max.apply(null,logs.map(function(l){return l.w;}))+1;
+    var minW=Math.min.apply(null,logs.map(function(l){return l.w;}))-1;
+    var maxF=Math.max.apply(null,logs.map(function(l){return l.f;}))+2;
+    var minF=Math.min.apply(null,logs.map(function(l){return l.f;}))-2;
+    var W=320,H=160,padL=32,padR=32,padT=10,padB=24;
+    var pw=W-padL-padR,ph=H-padT-padB;
+    function xp(i){return padL+i/(logs.length-1)*pw;}
+    function yW(v){return padT+ph-(v-minW)/(maxW-minW)*ph;}
+    function yF(v){return padT+ph-(v-minF)/(maxF-minF)*ph;}
+    var wPath=logs.map(function(l,i){return (i===0?'M':'L')+xp(i).toFixed(1)+' '+yW(l.w).toFixed(1);}).join(' ');
+    var fPath=logs.map(function(l,i){return (i===0?'M':'L')+xp(i).toFixed(1)+' '+yF(l.f).toFixed(1);}).join(' ');
+    var dots=logs.map(function(l,i){
+      return '<circle cx="'+xp(i).toFixed(1)+'" cy="'+yW(l.w).toFixed(1)+'" r="4" fill="#3D6B4A" stroke="#FDFAF5" stroke-width="2"/>'
+            +'<circle cx="'+xp(i).toFixed(1)+'" cy="'+yF(l.f).toFixed(1)+'" r="4" fill="#C47B0A" stroke="#FDFAF5" stroke-width="2"/>';
+    }).join('');
+    var labels=logs.map(function(l,i){return '<text x="'+xp(i).toFixed(1)+'" y="'+(H-6)+'" text-anchor="middle" font-size="10" fill="var(--br2)">'+l.d+'</text>';}).join('');
+    ca.innerHTML='<div class="card" style="margin-bottom:10px;">'
+      +'<div style="font-weight:900;font-size:15px;margin-bottom:12px;">📊 趨勢圖表 <span style="font-size:12px;font-weight:500;color:var(--br2);">(最近'+logs.length+'筆)</span></div>'
+      +'<div style="display:flex;gap:16px;margin-bottom:10px;">'
+        +'<div style="display:flex;align-items:center;gap:6px;font-size:12px;"><svg width="24" height="4"><line x1="0" y1="2" x2="24" y2="2" stroke="#3D6B4A" stroke-width="3" stroke-linecap="round"/></svg><span style="color:var(--br2);">體重 (kg)</span></div>'
+        +'<div style="display:flex;align-items:center;gap:6px;font-size:12px;"><svg width="24" height="4"><line x1="0" y1="2" x2="24" y2="2" stroke="#C47B0A" stroke-width="3" stroke-dasharray="5 3" stroke-linecap="round"/></svg><span style="color:var(--br2);">體脂率 (%)</span></div>'
+      +'</div>'
+      +'<div style="overflow-x:auto;">'
+        +'<svg width="'+W+'" height="'+H+'" style="font-family:var(--fn);">'
+          +'<path d="'+wPath+'" fill="none" stroke="#3D6B4A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'
+          +'<path d="'+fPath+'" fill="none" stroke="#C47B0A" stroke-width="2.5" stroke-dasharray="6 3" stroke-linecap="round" stroke-linejoin="round"/>'
+          +dots+labels
+        +'</svg>'
+      +'</div>'
+    +'</div>';
+  }
+
+  // History
+  var hist=document.getElementById('body-hist');
+  var histList=document.getElementById('body-hist-list');
+  hist.style.display='block';
+  histList.innerHTML=[...logs].reverse().map(function(l,i){
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:'+(i<logs.length-1?'1px solid var(--bd)':'none')+'">'
+      +'<span style="font-size:13px;color:var(--br2);font-weight:700;">'+l.d+'</span>'
+      +'<div style="display:flex;gap:12px;font-size:13px;">'
+        +'<span><b style="color:var(--gn);">'+l.w+'</b> kg</span>'
+        +'<span><b style="color:var(--am);">'+l.f+'</b> %</span>'
+        +'<span style="color:var(--br3);">BMI '++(l.w/(l.h/100)**2).toFixed(1)+'</span>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
+
+function clearBodyLogs(){
+  if(!confirm('確定清除所有身體組成紀錄？'))return;
+  state.bodyLogs=[];
+  localStorage.setItem('body_logs','[]');
+  renderBodyPage();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════════════════════════════════
+function saveSettings(){
+  state.apiKey=document.getElementById('st-key').value.trim();
+  state.tdee=Number(document.getElementById('st-tdee').value)||2000;
+  state.warn=Number(document.getElementById('st-warn').value)||500;
+  localStorage.setItem('apiKey',state.apiKey);
+  localStorage.setItem('tdee',state.tdee);
+  localStorage.setItem('warn',state.warn);
+  var btn=document.querySelector('#pg-settings .btn-br');
+  btn.textContent='✅ 已儲存！';
+  setTimeout(function(){btn.textContent='💾 儲存設定';goPage('dash');},1500);
+}
+
+function clearTodayRecs(){
+  if(!confirm('確定清除今日所有飲食紀錄？'))return;
+  state.records=[];saveRecs();renderDash();goPage('dash');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// GEMINI
+// ══════════════════════════════════════════════════════════════════
+async function callGemini(prompt){
+  var r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key='+state.apiKey,{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.3,maxOutputTokens:512}})
+  });
+  if(!r.ok)throw new Error(r.status);
+  var d=await r.json();
+  return JSON.parse((d.candidates[0].content.parts[0].text||'').replace(/```json|```/g,'').trim());
+}
+
+async function callGeminiImage(b64,mime){
+  var sys='你是台灣飲食營養分析師。辨識食物並以純JSON回傳（無markdown）：{"name":"食物名稱（繁體中文）","unit":"份量","calories":數字,"protein":數字,"fat":數字,"carbs":數字}';
+  var r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key='+state.apiKey,{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({system_instruction:{parts:[{text:sys}]},contents:[{parts:[{inline_data:{mime_type:mime,data:b64}},{text:'分析圖片回傳JSON。'}]}],generationConfig:{temperature:0.2,maxOutputTokens:512}})
+  });
+  if(!r.ok)throw new Error(r.status);
+  var d=await r.json();
+  return JSON.parse((d.candidates[0].content.parts[0].text||'').replace(/```json|```/g,'').trim());
+}
+
+// ══════════════════════════════════════════════════════════════════
+// START
+// ══════════════════════════════════════════════════════════════════
+init();
+</script>
+
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('/sw.js').catch(function(){});
+  });
+}
+</script>
+</body>
+</html>
