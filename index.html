@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#3A2718" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="減脂日誌" />
+  <meta name="description" content="我的 AI 減脂教練 — 台灣衛福部食物資料庫 × Gemini AI 識食" />
+  <title>🌿 我的 AI 減脂教練</title>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json" />
+
+  <!-- Apple Touch Icons -->
+  <link rel="apple-touch-icon" href="https://placehold.co/192x192/3A2718/FFFFFF?text=🌿" />
+
+  <!-- Google Fonts — M PLUS Rounded 1c (圓潤黑體) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800;900&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg:      #F2EDE4;
+      --card:    #FDFAF5;
+      --border:  #E4DAC8;
+      --brown:   #3A2718;
+      --brown2:  #7A5C44;
+      --brown3:  #B89070;
+      --green:   #3D6B4A;
+      --greenL:  #EBF4EE;
+      --amber:   #C47B0A;
+      --amberL:  #FEF3DC;
+      --red:     #B84040;
+      --redL:    #FDEAEA;
+      --cream:   #EAE2D2;
+      --cream2:  #F5EFE4;
+      --white:   #FFFFFF;
+      --shadow:  0 2px 16px rgba(58,39,24,.08);
+      --shadow-md: 0 4px 24px rgba(58,39,24,.12);
+      --font: 'M PLUS Rounded 1c', 'Noto Sans TC', sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body, #root {
+      height: 100%;
+      background: var(--bg);
+      font-family: var(--font);
+      color: var(--brown);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    input, button, select, textarea { font-family: var(--font); }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .cat-scroll::-webkit-scrollbar { display: none; }
+    .cat-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+    @keyframes spin   { to { transform: rotate(360deg); } }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes pop    { 0%{transform:scale(.92);opacity:0} 60%{transform:scale(1.03)} 100%{transform:scale(1);opacity:1} }
+    .fade-up { animation: fadeUp .3s cubic-bezier(.4,0,.2,1) both; }
+    .pop-in  { animation: pop   .28s cubic-bezier(.34,1.56,.64,1) both; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- React 18 + ReactDOM (UMD) -->
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+
+  <!-- Babel standalone (JSX transpilation in browser) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+
+  <!-- Recharts (UMD) — depends on React -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.10.3/Recharts.min.js"></script>
+
+  <!-- ════════════════════════════════════════════════════════════════════════
+       APP SCRIPT  (Babel JSX transpiled at runtime)
+       ════════════════════════════════════════════════════════════════════════ -->
+  <script type="text/babel" data-presets="react">
+    const { useState, useEffect, useRef, useCallback } = React;
+    const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } = Recharts;
+
+    // ── Food DB — 台灣衛福部 2024，170 種，每 100g ──────────────────────────────
+    const FOOD_DB = {
+      "白飯":{calories:182.0,protein:3.1,fat:0.2,carbs:41.0},
+      "即食燕麥片":{calories:383.9,protein:11.9,fat:9.6,carbs:67.9},
+      "白饅頭":{calories:246.2,protein:8.1,fat:1.2,carbs:51.3},
+      "油條":{calories:548.1,protein:10.1,fat:40.2,carbs:37.3},
+      "三角飯糰":{calories:214.9,protein:5.8,fat:5.5,carbs:36.6},
+      "牛肉泡麵":{calories:469.7,protein:9.6,fat:24.5,carbs:53.6},
+      "鮮蝦泡麵":{calories:471.4,protein:9.6,fat:23.8,carbs:55.5},
+      "擔仔麵":{calories:118.7,protein:4.4,fat:6.5,carbs:11.9},
+      "炒板條":{calories:147.0,protein:4.2,fat:4.2,carbs:23.7},
+      "烏龍麵":{calories:125.7,protein:3.4,fat:0.3,carbs:28.2},
+      "油麵":{calories:162.1,protein:5.5,fat:1.8,carbs:31.2},
+      "雞絲麵":{calories:460.6,protein:9.4,fat:22.8,carbs:55.0},
+      "乾麵條":{calories:346.7,protein:11.6,fat:1.5,carbs:72.5},
+      "冬粉":{calories:348.5,protein:0.1,fat:0.1,carbs:87.5},
+      "米苔目":{calories:120.9,protein:0.6,fat:0.0,carbs:29.6},
+      "粿仔條":{calories:192.6,protein:0.5,fat:1.2,carbs:45.0},
+      "蔥油餅":{calories:299.9,protein:8.3,fat:9.3,carbs:46.9},
+      "燒餅":{calories:320.3,protein:9.1,fat:9.1,carbs:51.1},
+      "韭菜盒子":{calories:214.3,protein:7.5,fat:12.1,carbs:19.5},
+      "水煎包":{calories:162.6,protein:4.3,fat:5.4,carbs:25.2},
+      "肉粽":{calories:233.6,protein:8.2,fat:8.8,carbs:30.7},
+      "豬血糕":{calories:192.0,protein:8.6,fat:0.9,carbs:37.8},
+      "筒仔米糕":{calories:243.6,protein:6.6,fat:8.6,carbs:35.5},
+      "微波白飯":{calories:167.2,protein:3.2,fat:0.3,carbs:37.0},
+      "廣東粥":{calories:81.0,protein:4.9,fat:2.8,carbs:9.1},
+      "小籠包":{calories:239.1,protein:9.6,fat:15.5,carbs:15.9},
+      "火腿蛋三明治":{calories:272.4,protein:10.9,fat:13.2,carbs:28.2},
+      "漢堡包":{calories:315.9,protein:9.1,fat:7.4,carbs:54.9},
+      "土司":{calories:282.9,protein:9.5,fat:6.3,carbs:48.6},
+      "菠蘿麵包":{calories:376.1,protein:9.2,fat:15.0,carbs:51.5},
+      "肉鬆麵包":{calories:422.8,protein:8.1,fat:22.9,carbs:47.6},
+      "奶酥麵包":{calories:374.5,protein:9.1,fat:15.7,carbs:49.8},
+      "雞里肌":{calories:106.5,protein:23.7,fat:0.6,carbs:0.0},
+      "雞胸肉":{calories:116.8,protein:23.3,fat:1.9,carbs:0.6},
+      "雞棒棒腿":{calories:159.5,protein:16.8,fat:9.7,carbs:0.3},
+      "豬大里肌":{calories:211.7,protein:19.2,fat:14.4,carbs:0.0},
+      "豬後腿肉":{calories:122.8,protein:20.4,fat:4.0,carbs:0.4},
+      "豬絞肉":{calories:217.9,protein:19.0,fat:15.2,carbs:0.0},
+      "沙朗牛排":{calories:162.0,protein:20.4,fat:8.3,carbs:1.5},
+      "腓力牛排":{calories:184.2,protein:20.6,fat:10.7,carbs:0.1},
+      "鯛魚片":{calories:109.8,protein:18.2,fat:3.6,carbs:2.5},
+      "鯖魚":{calories:417.0,protein:14.4,fat:39.4,carbs:0.2},
+      "秋刀魚":{calories:276.6,protein:18.8,fat:21.8,carbs:4.1},
+      "鮭魚":{calories:173.7,protein:20.7,fat:9.5,carbs:0.0},
+      "旗魚":{calories:110.9,protein:26.0,fat:0.0,carbs:0.8},
+      "白帶魚":{calories:101.7,protein:19.6,fat:2.0,carbs:0.0},
+      "虱目魚":{calories:178.9,protein:21.8,fat:9.5,carbs:0.2},
+      "竹筴魚":{calories:116.4,protein:23.0,fat:2.0,carbs:0.0},
+      "白蝦":{calories:109.2,protein:22.3,fat:1.5,carbs:0.0},
+      "花枝":{calories:61.4,protein:13.8,fat:0.2,carbs:0.8},
+      "文蛤":{calories:36.9,protein:7.6,fat:0.5,carbs:2.7},
+      "台灣蜆":{calories:51.2,protein:8.9,fat:1.4,carbs:9.8},
+      "牡蠣":{calories:54.3,protein:9.4,fat:1.6,carbs:4.2},
+      "豬肝":{calories:136.5,protein:20.8,fat:5.3,carbs:1.7},
+      "雞肝":{calories:111.3,protein:18.8,fat:3.4,carbs:2.7},
+      "雞胗":{calories:89.0,protein:16.6,fat:2.0,carbs:0.3},
+      "雞蛋":{calories:131.8,protein:12.5,fat:8.6,carbs:2.0},
+      "茶葉蛋":{calories:146.7,protein:13.5,fat:8.7,carbs:3.5},
+      "滷蛋":{calories:190.8,protein:15.7,fat:11.4,carbs:6.4},
+      "荷包蛋":{calories:192.2,protein:13.0,fat:14.9,carbs:1.6},
+      "水煮蛋":{calories:144.2,protein:14.0,fat:9.2,carbs:1.7},
+      "傳統豆腐":{calories:87.3,protein:8.5,fat:3.4,carbs:6.0},
+      "嫩豆腐":{calories:51.5,protein:4.9,fat:3.0,carbs:1.6},
+      "雞蛋豆腐":{calories:78.6,protein:6.9,fat:4.6,carbs:2.7},
+      "五香豆干":{calories:192.4,protein:19.3,fat:10.6,carbs:6.2},
+      "無糖豆漿":{calories:32.4,protein:3.6,fat:1.9,carbs:0.7},
+      "香腸":{calories:354.2,protein:17.0,fat:26.3,carbs:12.3},
+      "熱狗":{calories:257.3,protein:13.3,fat:18.1,carbs:10.2},
+      "豬肉火腿":{calories:146.6,protein:16.5,fat:4.9,carbs:9.0},
+      "培根":{calories:372.5,protein:13.5,fat:35.6,carbs:0.0},
+      "叉燒肉":{calories:252.6,protein:17.2,fat:13.1,carbs:16.5},
+      "豬肉乾":{calories:329.2,protein:30.0,fat:5.0,carbs:41.0},
+      "貢丸":{calories:244.1,protein:16.6,fat:20.3,carbs:0.0},
+      "旗魚丸":{calories:158.0,protein:12.8,fat:6.7,carbs:12.0},
+      "花枝丸":{calories:162.0,protein:12.7,fat:7.0,carbs:13.0},
+      "雞塊":{calories:227.7,protein:15.3,fat:12.9,carbs:12.6},
+      "天婦羅":{calories:175.5,protein:12.4,fat:4.7,carbs:21.0},
+      "魚板":{calories:125.3,protein:10.0,fat:2.0,carbs:17.6},
+      "蟹味棒":{calories:117.8,protein:9.3,fat:0.7,carbs:18.6},
+      "茄汁鯖魚罐頭":{calories:114.8,protein:17.6,fat:3.8,carbs:2.8},
+      "鮪魚罐頭":{calories:257.7,protein:10.0,fat:24.1,carbs:0.9},
+      "烤雞":{calories:232.9,protein:22.8,fat:14.2,carbs:3.6},
+      "雞精":{calories:34.1,protein:8.6,fat:0.0,carbs:0.0},
+      "蚵仔煎":{calories:191.2,protein:4.9,fat:10.4,carbs:19.7},
+      "白蘿蔔":{calories:17.1,protein:0.4,fat:0.1,carbs:4.4},
+      "胡蘿蔔":{calories:32.0,protein:1.0,fat:0.2,carbs:8.5},
+      "大蒜":{calories:114.6,protein:6.7,fat:0.2,carbs:26.4},
+      "青蔥":{calories:26.3,protein:1.1,fat:0.2,carbs:6.8},
+      "白洋蔥":{calories:39.5,protein:1.0,fat:0.1,carbs:10.0},
+      "韭菜":{calories:18.4,protein:1.9,fat:0.4,carbs:3.9},
+      "菠菜":{calories:14.2,protein:2.2,fat:0.3,carbs:2.4},
+      "花椰菜":{calories:19.3,protein:1.8,fat:0.1,carbs:4.5},
+      "青花椰菜":{calories:22.6,protein:3.7,fat:0.2,carbs:4.4},
+      "高麗菜":{calories:21.9,protein:1.4,fat:0.2,carbs:4.9},
+      "地瓜葉":{calories:21.6,protein:3.2,fat:0.3,carbs:4.4},
+      "金針菇":{calories:33.0,protein:2.6,fat:0.3,carbs:7.2},
+      "鴻喜菇":{calories:25.4,protein:2.9,fat:0.1,carbs:5.3},
+      "杏鮑菇":{calories:29.9,protein:2.4,fat:0.1,carbs:7.5},
+      "香菇":{calories:30.5,protein:3.0,fat:0.2,carbs:7.1},
+      "木耳":{calories:23.9,protein:0.9,fat:0.1,carbs:8.8},
+      "海帶結":{calories:12.1,protein:0.8,fat:0.1,carbs:3.6},
+      "海苔":{calories:227.5,protein:46.5,fat:3.7,carbs:32.1},
+      "玉米筍":{calories:29.4,protein:1.8,fat:0.2,carbs:7.0},
+      "絲瓜":{calories:16.7,protein:1.1,fat:0.1,carbs:3.9},
+      "苦瓜":{calories:14.0,protein:0.9,fat:0.1,carbs:4.1},
+      "冬瓜":{calories:10.7,protein:0.4,fat:0.1,carbs:2.7},
+      "南瓜":{calories:46.3,protein:1.7,fat:0.2,carbs:11.1},
+      "茄子":{calories:20.1,protein:1.2,fat:0.2,carbs:5.3},
+      "綠豆芽":{calories:21.3,protein:2.3,fat:0.2,carbs:4.1},
+      "黃豆芽":{calories:40.8,protein:5.3,fat:1.6,carbs:5.0},
+      "聖女番茄":{calories:31.0,protein:1.1,fat:0.5,carbs:6.9},
+      "牛番茄":{calories:16.6,protein:0.7,fat:0.1,carbs:4.0},
+      "紅甜椒":{calories:30.4,protein:0.8,fat:0.4,carbs:7.1},
+      "青椒":{calories:19.3,protein:0.8,fat:0.3,carbs:4.9},
+      "嫩薑":{calories:18.6,protein:0.0,fat:0.3,carbs:4.8},
+      "老薑":{calories:46.5,protein:1.1,fat:0.5,carbs:11.7},
+      "香蕉":{calories:82.4,protein:1.5,fat:0.1,carbs:22.1},
+      "木瓜":{calories:36.0,protein:0.6,fat:0.1,carbs:9.9},
+      "珍珠芭樂":{calories:36.1,protein:0.7,fat:0.2,carbs:10.6},
+      "西瓜":{calories:33.9,protein:0.8,fat:0.1,carbs:8.7},
+      "鳳梨":{calories:48.7,protein:0.5,fat:0.1,carbs:13.2},
+      "奇異果":{calories:51.9,protein:1.1,fat:0.3,carbs:14.0},
+      "草莓":{calories:35.9,protein:1.0,fat:0.2,carbs:9.3},
+      "葡萄":{calories:63.2,protein:0.5,fat:0.3,carbs:16.6},
+      "柳橙":{calories:40.2,protein:0.8,fat:0.1,carbs:11.0},
+      "蘋果":{calories:46.8,protein:0.2,fat:0.1,carbs:13.1},
+      "愛文芒果":{calories:40.9,protein:0.4,fat:0.2,carbs:11.0},
+      "蓮霧":{calories:38.1,protein:0.4,fat:0.3,carbs:10.0},
+      "龍眼":{calories:69.0,protein:1.1,fat:0.4,carbs:18.0},
+      "荔枝":{calories:63.6,protein:1.0,fat:0.2,carbs:16.5},
+      "全脂牛奶":{calories:63.2,protein:3.1,fat:3.6,carbs:4.8},
+      "低脂牛奶":{calories:42.6,protein:3.3,fat:1.1,carbs:5.0},
+      "全脂優格":{calories:97.2,protein:3.1,fat:3.3,carbs:13.6},
+      "低脂優格":{calories:63.2,protein:3.0,fat:0.4,carbs:12.1},
+      "起司片":{calories:309.3,protein:18.3,fat:23.7,carbs:5.9},
+      "珍珠奶茶(全糖)":{calories:94.0,protein:0.2,fat:2.4,carbs:17.9},
+      "珍珠奶茶(半糖)":{calories:83.5,protein:0.2,fat:2.7,carbs:14.5},
+      "珍珠奶茶(微糖)":{calories:75.3,protein:0.2,fat:2.3,carbs:13.5},
+      "烏龍奶茶(全糖)":{calories:74.8,protein:0.2,fat:2.8,carbs:12.3},
+      "無糖鮮奶茶":{calories:26.5,protein:2.0,fat:1.4,carbs:1.4},
+      "美式咖啡":{calories:2.4,protein:0.2,fat:0.1,carbs:0.3},
+      "無糖拿鐵":{calories:43.0,protein:3.0,fat:2.0,carbs:3.4},
+      "三合一咖啡":{calories:39.4,protein:0.9,fat:0.4,carbs:8.2},
+      "有糖豆漿":{calories:55.9,protein:3.2,fat:1.3,carbs:9.0},
+      "鹹豆漿":{calories:36.8,protein:3.5,fat:1.8,carbs:1.7},
+      "100%柳橙汁":{calories:47.1,protein:0.6,fat:0.3,carbs:10.7},
+      "烏龍茶(全糖)":{calories:35.7,protein:0.1,fat:0.0,carbs:8.8},
+      "烏龍茶(半糖)":{calories:21.1,protein:0.1,fat:0.0,carbs:5.2},
+      "乳酸飲料":{calories:44.7,protein:0.2,fat:0.0,carbs:11.0},
+      "洋芋片":{calories:548.5,protein:5.2,fat:34.3,carbs:55.8},
+      "蔬菜蘇打餅":{calories:506.3,protein:7.8,fat:24.7,carbs:64.5},
+      "夾心餅乾":{calories:514.3,protein:4.8,fat:27.4,carbs:62.8},
+      "牛奶巧克力":{calories:546.5,protein:9.4,fat:32.6,carbs:54.0},
+      "黑巧克力85%":{calories:584.6,protein:10.9,fat:46.1,carbs:38.7},
+      "香草冰淇淋":{calories:182.1,protein:2.5,fat:9.1,carbs:22.6},
+      "巧克力冰淇淋":{calories:191.8,protein:4.2,fat:10.6,carbs:19.9},
+      "紅豆牛奶冰棒":{calories:151.6,protein:3.5,fat:4.9,carbs:24.3},
+      "仙草凍":{calories:18.6,protein:0.9,fat:0.1,carbs:3.7},
+      "鮮奶布丁":{calories:110.1,protein:3.0,fat:5.1,carbs:13.1},
+      "花生豆花":{calories:58.5,protein:2.0,fat:0.9,carbs:10.9},
+      "銅鑼燒":{calories:328.1,protein:3.4,fat:9.9,carbs:57.2},
+      "紅豆車輪餅":{calories:174.1,protein:2.1,fat:1.1,carbs:42.3},
+      "蛋塔":{calories:373.0,protein:4.1,fat:21.7,carbs:41.1},
+      "蛋黃酥":{calories:457.3,protein:11.4,fat:26.4,carbs:44.5},
+      "鳳梨酥":{calories:480.8,protein:4.2,fat:24.4,carbs:62.0},
+      "番茄醬":{calories:110.9,protein:1.6,fat:0.1,carbs:26.7},
+      "沙拉醬":{calories:644.3,protein:1.9,fat:65.7,carbs:11.4},
+      "沙茶醬":{calories:721.4,protein:10.2,fat:71.8,carbs:10.4},
+      "花生醬":{calories:635.4,protein:24.0,fat:54.3,carbs:17.9},
+      "肉燥":{calories:397.3,protein:9.5,fat:38.0,carbs:4.2},
+    };
+
+    const CATS = {
+      "🍚 主食":["白飯","即食燕麥片","白饅頭","油條","三角飯糰","牛肉泡麵","鮮蝦泡麵","擔仔麵","炒板條","烏龍麵","油麵","雞絲麵","乾麵條","冬粉","米苔目","粿仔條","蔥油餅","燒餅","韭菜盒子","水煎包","肉粽","豬血糕","筒仔米糕","微波白飯","廣東粥","小籠包","火腿蛋三明治","漢堡包","土司","菠蘿麵包","肉鬆麵包","奶酥麵包"],
+      "🥩 肉蛋海鮮":["雞里肌","雞胸肉","雞棒棒腿","豬大里肌","豬後腿肉","豬絞肉","沙朗牛排","腓力牛排","鯛魚片","鯖魚","秋刀魚","鮭魚","旗魚","白帶魚","虱目魚","竹筴魚","白蝦","花枝","文蛤","台灣蜆","牡蠣","豬肝","雞肝","雞胗","雞蛋","茶葉蛋","滷蛋","荷包蛋","水煮蛋"],
+      "🫘 豆製加工":["傳統豆腐","嫩豆腐","雞蛋豆腐","五香豆干","無糖豆漿","香腸","熱狗","豬肉火腿","培根","叉燒肉","豬肉乾","貢丸","旗魚丸","花枝丸","雞塊","天婦羅","魚板","蟹味棒","茄汁鯖魚罐頭","鮪魚罐頭","烤雞","雞精","蚵仔煎"],
+      "🥦 蔬菜菇藻":["白蘿蔔","胡蘿蔔","大蒜","青蔥","白洋蔥","韭菜","菠菜","花椰菜","青花椰菜","高麗菜","地瓜葉","金針菇","鴻喜菇","杏鮑菇","香菇","木耳","海帶結","海苔","玉米筍","絲瓜","苦瓜","冬瓜","南瓜","茄子","綠豆芽","黃豆芽","聖女番茄","牛番茄","紅甜椒","青椒","嫩薑","老薑"],
+      "🍎 水果":["香蕉","木瓜","珍珠芭樂","西瓜","鳳梨","奇異果","草莓","葡萄","柳橙","蘋果","愛文芒果","蓮霧","龍眼","荔枝"],
+      "🥛 乳品":["全脂牛奶","低脂牛奶","全脂優格","低脂優格","起司片"],
+      "🧋 飲料":["珍珠奶茶(全糖)","珍珠奶茶(半糖)","珍珠奶茶(微糖)","烏龍奶茶(全糖)","無糖鮮奶茶","美式咖啡","無糖拿鐵","三合一咖啡","有糖豆漿","鹹豆漿","100%柳橙汁","烏龍茶(全糖)","烏龍茶(半糖)","乳酸飲料"],
+      "🍡 點心零食":["洋芋片","蔬菜蘇打餅","夾心餅乾","牛奶巧克力","黑巧克力85%","香草冰淇淋","巧克力冰淇淋","紅豆牛奶冰棒","仙草凍","鮮奶布丁","花生豆花","銅鑼燒","紅豆車輪餅","蛋塔","蛋黃酥","鳳梨酥"],
+      "🫙 調味料":["番茄醬","沙拉醬","沙茶醬","花生醬","肉燥"],
+    };
+
+    // ── Gemini ──────────────────────────────────────────────────────────────────
+    const SYS = `你是專業的台灣飲食營養分析師。用戶會上傳食物圖片，請辨識食物並以 JSON 格式回傳（不要包含任何 markdown，只有純 JSON）：{"name":"食物名稱（繁體中文）","unit":"份量描述","calories":數字,"protein":數字,"fat":數字,"carbs":數字}`;
+    const gFetch = (key, body) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json();}).then(d=>JSON.parse((d.candidates?.[0]?.content?.parts?.[0]?.text||"").replace(/```json|```/g,"").trim()));
+    const aiImage = (k,b64,mime) => gFetch(k,{system_instruction:{parts:[{text:SYS}]},contents:[{parts:[{inline_data:{mime_type:mime,data:b64}},{text:"請分析這個食物圖片並回傳 JSON。"}]}],generationConfig:{temperature:0.2,maxOutputTokens:512}});
+    const aiText  = (k,q) => gFetch(k,{contents:[{parts:[{text:q}]}],generationConfig:{temperature:0.2,maxOutputTokens:256}});
+    const aiAlts  = (k,name,cal) => gFetch(k,{contents:[{parts:[{text:`食物「${name}」熱量約 ${cal} 大卡，太高了！請以台灣生活圈（7-11、全家、全聯、路邊攤）為範圍，給出 3 個容易取得的低熱量替代品，語氣幽默鼓勵。回傳純 JSON（無 markdown）：[{"name":"替代品名稱","where":"在哪買","calories":數字,"reason":"幽默一句話說明"},...]`}]}],generationConfig:{temperature:0.8,maxOutputTokens:512}});
+
+    // ── Shared UI ────────────────────────────────────────────────────────────────
+    const Card = ({children,style={},cls=""}) => <div className={cls} style={{background:"var(--card)",borderRadius:20,padding:18,boxShadow:"var(--shadow)",border:"1px solid var(--border)",...style}}>{children}</div>;
+    const Pill = ({children,active,onClick}) => <button onClick={onClick} style={{background:active?"var(--brown)":"var(--cream2)",color:active?"#fff":"var(--brown2)",border:"none",borderRadius:99,padding:"7px 16px",fontSize:13,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,fontFamily:"var(--font)"}}>{children}</button>;
+    const BigBtn = ({children,onClick,bg="var(--brown)",color="#fff",outline=false,disabled=false}) => <button disabled={disabled} onClick={onClick} style={{display:"block",width:"100%",background:outline?"transparent":bg,color:outline?bg:color,border:outline?`2px solid ${bg}`:"none",borderRadius:16,padding:"16px 20px",fontSize:15,fontWeight:800,cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.5:1,fontFamily:"var(--font)"}}>{children}</button>;
+
+    // ── Donut ────────────────────────────────────────────────────────────────────
+    function Donut({protein,fat,carbs,size=88}) {
+      const total=protein*4+fat*9+carbs*4||1;
+      const pP=(protein*4)/total,fP=(fat*9)/total,cP=(carbs*4)/total;
+      const r=34,cx=50,cy=50;
+      const arc=(s,p)=>{if(p<=0)return "";if(p>=1)p=0.9999;const a1=s*2*Math.PI-Math.PI/2,a2=(s+p)*2*Math.PI-Math.PI/2;return `M${cx} ${cy}L${cx+r*Math.cos(a1)} ${cy+r*Math.sin(a1)}A${r} ${r} 0 ${p>.5?1:0} 1 ${cx+r*Math.cos(a2)} ${cy+r*Math.sin(a2)}Z`;};
+      return <svg viewBox="0 0 100 100" width={size} height={size}><circle cx={cx} cy={cy} r={r} fill="var(--cream)"/><path d={arc(0,pP)} fill="var(--green)"/><path d={arc(pP,fP)} fill="var(--amber)"/><path d={arc(pP+fP,cP)} fill="var(--brown)"/><circle cx={cx} cy={cy} r={20} fill="var(--card)"/></svg>;
+    }
+
+    // ── BMI ──────────────────────────────────────────────────────────────────────
+    const bmiInfo=b=>b<18.5?{label:"過輕",color:"#4A90D9",emoji:"😟"}:b<24?{label:"正常",color:"var(--green)",emoji:"😊"}:b<27?{label:"過重",color:"var(--amber)",emoji:"😐"}:{label:"肥胖",color:"var(--red)",emoji:"😅"};
+    const ChartTip=({active,payload,label})=>{if(!active||!payload?.length)return null;return <div style={{background:"var(--card)",border:"1px solid var(--border)",borderRadius:14,padding:"10px 14px",boxShadow:"var(--shadow)",fontSize:13,fontFamily:"var(--font)"}}><div style={{fontWeight:800,marginBottom:6}}>{label}</div>{payload.map(p=><div key={p.dataKey} style={{color:p.color,fontWeight:700}}>{p.name}：{p.value}{p.dataKey==="weight"?" kg":" %"}</div>)}</div>;};
+
+    // ── Body Page ────────────────────────────────────────────────────────────────
+    function BodyPage() {
+      const [logs,setLogs]=useState(()=>JSON.parse(localStorage.getItem("body_logs")||"[]"));
+      const [h,setH]=useState(""); const [w,setW]=useState(""); const [f,setF]=useState(""); const [saved,setSaved]=useState(false);
+      useEffect(()=>{localStorage.setItem("body_logs",JSON.stringify(logs));},[logs]);
+      const save=()=>{if(!h||!w||!f)return;const dateKey=new Date().toDateString();const date=new Date().toLocaleDateString("zh-TW",{month:"2-digit",day:"2-digit"});const entry={dateKey,date,height:+h,weight:+w,fat:+f};setLogs(prev=>{const idx=prev.findIndex(l=>l.dateKey===dateKey);const n=[...prev];idx>=0?n[idx]=entry:n.push(entry);return n.slice(-30);});setSaved(true);setTimeout(()=>setSaved(false),2000);};
+      const latest=logs[logs.length-1],prev2=logs[logs.length-2];
+      const bmi=latest?+(latest.weight/(latest.height/100)**2).toFixed(1):null;
+      const bi=bmi?bmiInfo(bmi):null;
+      const wD=latest&&prev2?+(latest.weight-prev2.weight).toFixed(1):null;
+      const fD=latest&&prev2?+(latest.fat-prev2.fat).toFixed(1):null;
+      const chart=logs.map(l=>({date:l.date,weight:l.weight,fat:l.fat}));
+      const ni=(val,set,sfx,ph)=><div style={{position:"relative"}}><input type="number" value={val} onChange={e=>set(e.target.value)} placeholder={ph} style={{width:"100%",border:`2px solid ${val?"var(--green)":"var(--border)"}`,borderRadius:14,padding:"13px 32px 13px 14px",fontSize:18,fontWeight:800,background:"var(--bg)",color:"var(--brown)",outline:"none",textAlign:"center",fontFamily:"var(--font)"}}/><span style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",fontSize:11,color:"var(--brown3)",fontWeight:700}}>{sfx}</span></div>;
+      return (
+        <div style={{padding:"16px 14px"}}>
+          <Card style={{marginBottom:12}} cls="fade-up">
+            <div style={{fontWeight:900,fontSize:15,marginBottom:14}}>📝 今日量測</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:14}}>
+              <div><div style={{fontSize:12,color:"var(--brown2)",fontWeight:700,marginBottom:6,textAlign:"center"}}>身高</div>{ni(h,setH,"cm","170")}</div>
+              <div><div style={{fontSize:12,color:"var(--brown2)",fontWeight:700,marginBottom:6,textAlign:"center"}}>體重</div>{ni(w,setW,"kg","65")}</div>
+              <div><div style={{fontSize:12,color:"var(--brown2)",fontWeight:700,marginBottom:6,textAlign:"center"}}>體脂率</div>{ni(f,setF,"%","22")}</div>
+            </div>
+            <BigBtn onClick={save} bg="var(--green)" disabled={!h||!w||!f}>{saved?"✅ 已儲存！":"💾 儲存今日數據"}</BigBtn>
+          </Card>
+          {latest && <>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+              {[["⚖️ 體重",latest.weight,"kg","var(--brown)",wD],["🔥 體脂率",latest.fat,"%","var(--amber)",fD]].map(([label,val,unit,color,diff])=>(
+                <Card key={label} style={{padding:16}} cls="fade-up">
+                  <div style={{fontSize:11,color:"var(--brown2)",fontWeight:700,marginBottom:8}}>{label}</div>
+                  <div style={{display:"flex",alignItems:"baseline",gap:3}}><span style={{fontSize:34,fontWeight:900,color,lineHeight:1}}>{val}</span><span style={{fontSize:13,color:"var(--brown2)"}}>{unit}</span></div>
+                  {diff!==null&&<div style={{marginTop:7,fontSize:12,fontWeight:800,color:diff<0?"var(--green)":diff>0?"var(--red)":"var(--brown2)"}}>{diff<0?`↓ ${Math.abs(diff)}${unit} 🎉`:diff>0?`↑ ${diff}${unit}`:"→ 持平"}</div>}
+                </Card>
+              ))}
+            </div>
+            <Card style={{marginBottom:10}} cls="fade-up">
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                <div>
+                  <div style={{fontSize:11,color:"var(--brown2)",fontWeight:700,marginBottom:5}}>📐 BMI 指數</div>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:42,fontWeight:900,color:bi.color,lineHeight:1}}>{bmi}</span><span style={{fontSize:12,fontWeight:800,color:bi.color,background:bi.color+"20",borderRadius:99,padding:"3px 10px"}}>{bi.label}</span></div>
+                  <div style={{fontSize:11,color:"var(--brown3)",marginTop:5}}>{latest.height} cm · {latest.weight} kg</div>
+                </div>
+                <div style={{fontSize:48}}>{bi.emoji}</div>
+              </div>
+              <div style={{height:8,borderRadius:99,display:"flex",overflow:"hidden",marginBottom:4}}><div style={{flex:1.1,background:"#4A90D9"}}/><div style={{flex:1.1,background:"var(--green)"}}/><div style={{flex:.6,background:"var(--amber)"}}/><div style={{flex:.8,background:"var(--red)"}}/></div>
+              <div style={{position:"relative",height:16}}><div style={{position:"absolute",left:`${Math.min(Math.max((bmi-14)/22,0),1)*100}%`,transform:"translateX(-50%)",fontSize:16}}>▲</div></div>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"var(--brown3)"}}><span>過輕</span><span>正常</span><span>過重</span><span>肥胖</span></div>
+            </Card>
+          </>}
+          {chart.length>=2?(
+            <Card style={{marginBottom:10}} cls="fade-up">
+              <div style={{fontWeight:900,fontSize:15,marginBottom:12}}>📊 趨勢圖表 <span style={{fontSize:12,fontWeight:500,color:"var(--brown2)"}}>（最近 {chart.length} 筆）</span></div>
+              <div style={{display:"flex",gap:16,marginBottom:12}}>
+                {[["var(--green)","體重 (kg)",false],["var(--amber)","體脂率 (%)",true]].map(([c,l,d])=>(
+                  <div key={l} style={{display:"flex",alignItems:"center",gap:6,fontSize:12}}><svg width={24} height={4}><line x1={0} y1={2} x2={24} y2={2} stroke={c} strokeWidth={3} strokeDasharray={d?"5 3":""} strokeLinecap="round"/></svg><span style={{color:"var(--brown2)"}}>{l}</span></div>
+                ))}
+              </div>
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={chart} margin={{top:4,right:10,left:-22,bottom:0}}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false}/>
+                  <XAxis dataKey="date" tick={{fontSize:11,fill:"var(--brown2)",fontFamily:"var(--font)"}} axisLine={false} tickLine={false}/>
+                  <YAxis yAxisId="w" orientation="left" domain={["auto","auto"]} tick={{fontSize:11,fill:"var(--green)",fontFamily:"var(--font)"}} axisLine={false} tickLine={false}/>
+                  <YAxis yAxisId="f" orientation="right" domain={["auto","auto"]} tick={{fontSize:11,fill:"var(--amber)",fontFamily:"var(--font)"}} axisLine={false} tickLine={false}/>
+                  <Tooltip content={<ChartTip/>}/>
+                  <Line yAxisId="w" type="monotone" dataKey="weight" name="體重" stroke="var(--green)" strokeWidth={2.5} dot={{r:5,fill:"var(--green)",stroke:"var(--card)",strokeWidth:2}} activeDot={{r:7}}/>
+                  <Line yAxisId="f" type="monotone" dataKey="fat" name="體脂率" stroke="var(--amber)" strokeWidth={2.5} strokeDasharray="5 3" dot={{r:5,fill:"var(--amber)",stroke:"var(--card)",strokeWidth:2}} activeDot={{r:7}}/>
+                </LineChart>
+              </ResponsiveContainer>
+            </Card>
+          ):(
+            <Card style={{textAlign:"center",padding:"32px 16px",marginBottom:10}} cls="fade-up">
+              <div style={{fontSize:40,marginBottom:10}}>📈</div>
+              <div style={{fontWeight:800,fontSize:14,color:"var(--brown2)"}}>再記錄 {2-chart.length} 天就能看到趨勢圖！</div>
+              <div style={{fontSize:12,color:"var(--brown3)",marginTop:6}}>每天量測，曲線自然美 🌿</div>
+            </Card>
+          )}
+          {logs.length>0&&(
+            <Card cls="fade-up">
+              <div style={{fontWeight:900,fontSize:15,marginBottom:12}}>🗓️ 歷史紀錄</div>
+              {[...logs].reverse().map((l,i)=>(
+                <div key={l.dateKey} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:i<logs.length-1?"1px solid var(--border)":"none"}}>
+                  <span style={{fontSize:13,color:"var(--brown2)",fontWeight:700}}>{l.date}</span>
+                  <div style={{display:"flex",gap:12,fontSize:13}}>
+                    <span><b style={{color:"var(--green)"}}>{l.weight}</b> kg</span>
+                    <span><b style={{color:"var(--amber)"}}>{l.fat}</b> %</span>
+                    <span style={{color:"var(--brown3)"}}>BMI {+(l.weight/(l.height/100)**2).toFixed(1)}</span>
+                  </div>
+                </div>
+              ))}
+              <button onClick={()=>{if(confirm("確定清除所有身體組成紀錄？"))setLogs([]);}} style={{marginTop:12,background:"none",border:"none",color:"var(--red)",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"var(--font)"}}>🗑️ 清除全部紀錄</button>
+            </Card>
+          )}
+        </div>
+      );
+    }
+
+    // ── Main App ─────────────────────────────────────────────────────────────────
+    function App() {
+      const [page,setPage]       = useState("dash");
+      const [apiKey,setApiKey]   = useState(()=>localStorage.getItem("gemini_key")||"");
+      const [tdee,setTdee]       = useState(()=>Number(localStorage.getItem("tdee")||2000));
+      const [warnCal,setWarnCal] = useState(()=>Number(localStorage.getItem("warn_cal")||500));
+      const [records,setRecords] = useState(()=>{const s=JSON.parse(localStorage.getItem("records")||"{}");return s[new Date().toDateString()]||[];});
+      const [input,setInput]     = useState("");
+      const [gram,setGram]       = useState("100");
+      const [food,setFood]       = useState(null);
+      const [loading,setLoading] = useState(false);
+      const [error,setError]     = useState("");
+      const [alts,setAlts]       = useState(null);
+      const [altLoad,setAltLoad] = useState(false);
+      const [img,setImg]         = useState(null);
+      const [activeCat,setActiveCat] = useState("🍚 主食");
+      const [hits,setHits]       = useState([]);
+      const fileRef = useRef();
+
+      useEffect(()=>{const s=JSON.parse(localStorage.getItem("records")||"{}");s[new Date().toDateString()]=records;localStorage.setItem("records",JSON.stringify(s));},[records]);
+
+      const totals=records.reduce((a,r)=>({calories:a.calories+r.calories,protein:a.protein+r.protein,fat:a.fat+r.fat,carbs:a.carbs+r.carbs}),{calories:0,protein:0,fat:0,carbs:0});
+      const remaining=tdee-totals.calories;
+      const pct=Math.min(totals.calories/tdee,1);
+
+      const search=q=>Object.keys(FOOD_DB).filter(k=>k.includes(q)||q.split("").every(c=>k.includes(c))).slice(0,8);
+      const onInput=v=>{setInput(v);setHits(v.trim()?search(v):[]);setFood(null);setError("");};
+      const pickFood=(name,g=Number(gram)||100)=>{const base=FOOD_DB[name];const s=g/100;setInput(name);setHits([]);setFood({name,unit:`${g}g`,calories:+(base.calories*s).toFixed(1),protein:+(base.protein*s).toFixed(1),fat:+(base.fat*s).toFixed(1),carbs:+(base.carbs*s).toFixed(1),_base:base,_gram:g});};
+      const onGram=v=>{setGram(v);if(food?._base){const g=Number(v)||100;const s=g/100;const b=food._base;setFood(p=>({...p,unit:`${g}g`,calories:+(b.calories*s).toFixed(1),protein:+(b.protein*s).toFixed(1),fat:+(b.fat*s).toFixed(1),carbs:+(b.carbs*s).toFixed(1),_gram:g}));}};
+      const doSearch=async()=>{if(!input.trim())return;setError("");setHits([]);const exact=Object.keys(FOOD_DB).find(k=>k===input||input.includes(k)||k.includes(input));if(exact){pickFood(exact);return;}if(!apiKey){setError("找不到食物！請設定 Gemini API Key 啟用 AI 辨識。");return;}setLoading(true);try{setFood(await aiText(apiKey,`請分析食物「${input}」的營養，回傳純 JSON（無 markdown）：{"name":"...","unit":"...","calories":數字,"protein":數字,"fat":數字,"carbs":數字}`));}catch{setError("AI 辨識失敗，請確認 API Key 是否正確。");}setLoading(false);};
+      const onImg=e=>{const file=e.target.files?.[0];if(!file)return;setError("");setAlts(null);const reader=new FileReader();reader.onload=async ev=>{setImg(ev.target.result);if(!apiKey){setError("請先設定 Gemini API Key。");return;}setLoading(true);try{setFood(await aiImage(apiKey,ev.target.result.split(",")[1],file.type));}catch{setError("圖片辨識失敗，請重試。");}setLoading(false);};reader.readAsDataURL(file);};
+      const addRecord=useCallback(async f=>{const r={id:Date.now(),...f};setRecords(p=>[...p,r]);setFood(null);setInput("");setImg(null);setGram("100");setHits([]);setPage("dash");if(r.calories>=warnCal){if(!apiKey){setAlts([{name:"御飯糰",where:"7-11 / 全家",calories:190,reason:"🍙 方便抗餓，荷包感謝你！"},{name:"茶葉蛋",where:"便利商店",calories:75,reason:"🥚 蛋白質滿，卡路里少得可憐～"},{name:"無糖豆漿",where:"全聯 / 便利商店",calories:60,reason:"🥛 喝一杯，身材不走樣！"}]);return;}setAltLoad(true);try{setAlts(await aiAlts(apiKey,r.name,r.calories));}catch{}setAltLoad(false);}},[records,warnCal,apiKey]);
+      const replaceWithAlt=alt=>{setRecords(p=>[...p.slice(0,-1),{id:Date.now(),name:alt.name,calories:alt.calories,protein:5,fat:3,carbs:20,unit:"1份"}]);setAlts(null);};
+      const saveSettings=()=>{localStorage.setItem("gemini_key",apiKey);localStorage.setItem("tdee",tdee);localStorage.setItem("warn_cal",warnCal);setPage("dash");};
+
+      const navItems=[["dash","📊","今日"],["add","➕","新增"],["body","💪","體態"],["settings","⚙️","設定"]];
+      const iSt={border:"2px solid var(--border)",borderRadius:14,padding:"13px 14px",fontSize:15,fontWeight:600,background:"var(--card)",color:"var(--brown)",outline:"none",fontFamily:"var(--font)",width:"100%"};
+      const today=new Date().toLocaleDateString("zh-TW",{month:"long",day:"numeric",weekday:"short"});
+
+      return (
+        <div style={{maxWidth:430,margin:"0 auto",minHeight:"100vh",display:"flex",flexDirection:"column",background:"var(--bg)"}}>
+          {/* ── Header + Nav ── */}
+          <header style={{background:"var(--brown)",position:"sticky",top:0,zIndex:20,boxShadow:"0 2px 16px rgba(0,0,0,.18)"}}>
+            <div style={{padding:"14px 18px 0",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:22}}>🌿</span>
+                <div>
+                  <div style={{color:"#fff",fontSize:17,fontWeight:900,lineHeight:1.1}}>減脂日誌</div>
+                  <div style={{color:"rgba(255,255,255,.5)",fontSize:11,fontWeight:500}}>{today}</div>
+                </div>
+              </div>
+              <div style={{background:"rgba(255,255,255,.12)",borderRadius:99,padding:"6px 14px",display:"flex",alignItems:"center",gap:6}}>
+                <span style={{color:"rgba(255,255,255,.7)",fontSize:11,fontWeight:600}}>剩餘</span>
+                <span style={{color:remaining<0?"#FF8080":"#8FD9A8",fontSize:16,fontWeight:900}}>{remaining}</span>
+                <span style={{color:"rgba(255,255,255,.5)",fontSize:11}}>kcal</span>
+              </div>
+            </div>
+            <div style={{display:"flex",padding:"10px 10px 0",gap:2}}>
+              {navItems.map(([p,icon,label])=>{const active=page===p;return(
+                <button key={p} onClick={()=>{setPage(p);setError("");setFood(null);setHits([]);}} style={{flex:1,background:active?"rgba(255,255,255,.15)":"transparent",border:"none",borderRadius:"12px 12px 0 0",padding:"8px 4px 10px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2,fontFamily:"var(--font)"}}>
+                  <span style={{fontSize:p==="add"?22:18,lineHeight:1}}>{icon}</span>
+                  <span style={{fontSize:11,fontWeight:active?800:600,color:active?"#fff":"rgba(255,255,255,.5)"}}>{label}</span>
+                  {active&&<div style={{width:20,height:2.5,background:"#F5A623",borderRadius:99,marginTop:1}}/>}
+                </button>
+              );})}
+            </div>
+          </header>
+
+          {/* ── Main Content ── */}
+          <main style={{flex:1,overflowY:"auto",paddingBottom:20}}>
+
+            {/* Dashboard */}
+            {page==="dash"&&(
+              <div style={{padding:"14px 14px 0"}} className="fade-up">
+                <Card style={{marginBottom:12}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:14}}>
+                    <div>
+                      <div style={{fontSize:11,color:"var(--brown2)",fontWeight:700,marginBottom:4}}>今日已攝取熱量</div>
+                      <div style={{fontSize:52,fontWeight:900,color:remaining<0?"var(--red)":"var(--brown)",lineHeight:1}}>{totals.calories}</div>
+                      <div style={{fontSize:12,color:"var(--brown3)",marginTop:2}}>目標 {tdee} kcal</div>
+                    </div>
+                    <div style={{textAlign:"right",paddingBottom:4}}>
+                      <div style={{fontSize:11,color:"var(--brown2)",fontWeight:700}}>尚可攝取</div>
+                      <div style={{fontSize:34,fontWeight:900,color:remaining<0?"var(--red)":"var(--green)",lineHeight:1}}>{remaining}</div>
+                      <div style={{fontSize:11,color:"var(--brown3)"}}>kcal</div>
+                    </div>
+                  </div>
+                  <div style={{background:"var(--cream)",borderRadius:99,height:12,overflow:"hidden",marginBottom:6}}>
+                    <div style={{width:`${pct*100}%`,height:"100%",borderRadius:99,background:pct>.9?"var(--red)":pct>.7?"var(--amber)":"var(--green)",transition:"width .6s ease"}}/>
+                  </div>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"var(--brown3)"}}>
+                    <span>{Math.round(pct*100)}% 已使用</span><span>{records.length} 筆紀錄</span>
+                  </div>
+                </Card>
+                <Card style={{marginBottom:12,display:"flex",alignItems:"center",gap:14}}>
+                  <Donut protein={totals.protein} fat={totals.fat} carbs={totals.carbs}/>
+                  <div style={{flex:1}}>
+                    {[["🥩 蛋白質",totals.protein,"var(--green)"],["🧈 脂　肪",totals.fat,"var(--amber)"],["🍚 碳水化合物",totals.carbs,"var(--brown)"]].map(([label,val,color])=>(
+                      <div key={label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                        <span style={{fontSize:12,color:"var(--brown2)",fontWeight:600}}>{label}</span>
+                        <span style={{fontWeight:900,color,fontSize:15}}>{val} <span style={{fontSize:11,fontWeight:600}}>g</span></span>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+                {altLoad&&<div style={{background:"var(--amberL)",border:"1px solid var(--amber)",borderRadius:16,padding:14,marginBottom:12,textAlign:"center",fontSize:14,color:"var(--amber)",fontWeight:700}}>🤔 AI 教練正在想對策…</div>}
+                {alts&&(
+                  <div style={{background:"var(--amberL)",border:"2px solid var(--amber)",borderRadius:20,padding:16,marginBottom:12}} className="pop-in">
+                    <div style={{fontWeight:900,fontSize:15,color:"var(--amber)",marginBottom:4}}>⚠️ 熱量有點高喔！</div>
+                    <div style={{fontSize:13,color:"var(--brown2)",marginBottom:12}}>AI 教練推薦台灣生活圈好選擇：</div>
+                    {alts.map((a,i)=>(
+                      <div key={i} style={{background:"var(--white)",borderRadius:14,padding:"12px 14px",marginBottom:8,border:"1px solid var(--border)",display:"flex",gap:10,alignItems:"center"}}>
+                        <div style={{flex:1}}>
+                          <div style={{fontWeight:800,fontSize:14}}>{a.name} <span style={{fontSize:11,color:"var(--brown3)",fontWeight:500}}>{a.calories} kcal</span></div>
+                          <div style={{fontSize:11,color:"var(--green)",marginTop:2,fontWeight:600}}>📍 {a.where}</div>
+                          <div style={{fontSize:11,color:"var(--brown2)",marginTop:3}}>{a.reason}</div>
+                        </div>
+                        <button onClick={()=>replaceWithAlt(a)} style={{background:"var(--green)",color:"#fff",border:"none",borderRadius:12,padding:"8px 12px",fontSize:12,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap",fontFamily:"var(--font)"}}>替換</button>
+                      </div>
+                    ))}
+                    <button onClick={()=>setAlts(null)} style={{width:"100%",background:"none",border:"none",color:"var(--brown3)",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"var(--font)"}}>今天就這樣吧 🤷</button>
+                  </div>
+                )}
+                <Card>
+                  <div style={{fontWeight:900,fontSize:15,marginBottom:12}}>📋 今日飲食紀錄</div>
+                  {records.length===0&&<div style={{textAlign:"center",padding:"24px 0",color:"var(--brown3)"}}><div style={{fontSize:36,marginBottom:8}}>🍽️</div><div style={{fontSize:14,fontWeight:600}}>還沒有紀錄，快去新增吧！</div></div>}
+                  {records.map((r,i)=>(
+                    <div key={r.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:i<records.length-1?"1px solid var(--border)":"none"}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontWeight:800,fontSize:14,marginBottom:2}}>{r.name}</div>
+                        <div style={{fontSize:11,color:"var(--brown3)"}}>{r.unit} · 蛋白 {r.protein}g · 脂 {r.fat}g · 碳水 {r.carbs}g</div>
+                      </div>
+                      <div style={{display:"flex",alignItems:"center",gap:6,marginLeft:8}}>
+                        <div style={{textAlign:"right"}}><span style={{fontWeight:900,fontSize:16,color:"var(--brown)"}}>{r.calories}</span><span style={{fontSize:10,color:"var(--brown3)",marginLeft:2}}>kcal</span></div>
+                        <button onClick={()=>setRecords(p=>p.filter(x=>x.id!==r.id))} style={{background:"var(--redL)",border:"none",borderRadius:99,width:26,height:26,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"var(--red)",fontSize:13,fontWeight:800,flexShrink:0}}>✕</button>
+                      </div>
+                    </div>
+                  ))}
+                </Card>
+              </div>
+            )}
+
+            {/* Add Food */}
+            {page==="add"&&(
+              <div style={{padding:"14px 14px 0"}} className="fade-up">
+                <div style={{display:"flex",gap:8,marginBottom:10}}>
+                  <div style={{flex:1,position:"relative"}}>
+                    <input value={input} onChange={e=>onInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&doSearch()} placeholder="搜尋食物名稱…" style={iSt}/>
+                    {input&&<button onClick={()=>{setInput("");setHits([]);setFood(null);}} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"var(--brown3)",cursor:"pointer",fontSize:16}}>✕</button>}
+                  </div>
+                  <div style={{position:"relative",width:82}}>
+                    <input type="number" value={gram} onChange={e=>onGram(e.target.value)} placeholder="100" style={{...iSt,paddingLeft:10,paddingRight:24,textAlign:"right"}}/>
+                    <span style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",fontSize:11,color:"var(--brown3)",fontWeight:700,pointerEvents:"none"}}>g</span>
+                  </div>
+                  <button onClick={doSearch} style={{background:"var(--brown)",color:"#fff",border:"none",borderRadius:14,padding:"0 16px",cursor:"pointer",fontSize:18,flexShrink:0}}>🔍</button>
+                </div>
+                {hits.length>0&&(
+                  <div style={{background:"var(--card)",border:"1px solid var(--border)",borderRadius:16,marginBottom:10,overflow:"hidden",boxShadow:"var(--shadow-md)"}} className="pop-in">
+                    {hits.map((name,i)=>(
+                      <div key={name} onClick={()=>pickFood(name)} style={{padding:"12px 16px",borderBottom:i<hits.length-1?"1px solid var(--border)":"none",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                        <span style={{fontWeight:700,fontSize:14}}>{name}</span>
+                        <span style={{fontSize:11,color:"var(--brown3)",background:"var(--cream)",borderRadius:99,padding:"3px 10px",fontWeight:600}}>{FOOD_DB[name].calories} kcal/100g</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="cat-scroll" style={{display:"flex",gap:6,overflowX:"auto",marginBottom:10,paddingBottom:2}}>
+                  {Object.keys(CATS).map(cat=><Pill key={cat} active={activeCat===cat} onClick={()=>setActiveCat(cat)}>{cat}</Pill>)}
+                </div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:7,marginBottom:16}}>
+                  {CATS[activeCat].map(k=>(
+                    <button key={k} onClick={()=>pickFood(k)} style={{background:food?.name===k?"var(--green)":"var(--white)",color:food?.name===k?"#fff":"var(--brown2)",border:`1.5px solid ${food?.name===k?"var(--green)":"var(--border)"}`,borderRadius:99,padding:"6px 14px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"var(--font)"}}>{k}</button>
+                  ))}
+                </div>
+                <div onClick={()=>fileRef.current?.click()} style={{background:"var(--card)",border:"2px dashed var(--border)",borderRadius:20,padding:20,textAlign:"center",cursor:"pointer",marginBottom:12}}>
+                  {img?<img src={img} alt="preview" style={{maxHeight:160,borderRadius:14,objectFit:"cover"}}/>:<div style={{color:"var(--brown3)"}}><div style={{fontSize:36,marginBottom:6}}>📷</div><div style={{fontWeight:800,fontSize:14}}>拍照 AI 辨識</div><div style={{fontSize:12,marginTop:3}}>點此上傳食物照片</div></div>}
+                </div>
+                <input ref={fileRef} type="file" accept="image/*" style={{display:"none"}} onChange={onImg}/>
+                {loading&&<div style={{textAlign:"center",padding:20}}><div style={{fontSize:32,animation:"spin 1s linear infinite",display:"inline-block"}}>🌀</div><div style={{marginTop:8,color:"var(--brown2)",fontWeight:600,fontSize:13}}>AI 分析中…</div></div>}
+                {error&&<div style={{background:"var(--redL)",border:"1px solid var(--red)",borderRadius:14,padding:12,color:"var(--red)",fontSize:13,fontWeight:700,marginBottom:12}}>{error}</div>}
+                {food&&!loading&&(
+                  <Card style={{border:"2px solid var(--green)"}} cls="pop-in">
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                      <div style={{fontWeight:900,fontSize:18}}>{food.name}</div>
+                      <div style={{fontSize:11,color:"var(--brown3)",background:"var(--cream)",borderRadius:99,padding:"3px 10px",fontWeight:700,flexShrink:0,marginLeft:8}}>📋 衛福部資料</div>
+                    </div>
+                    <div style={{fontSize:12,color:"var(--brown3)",marginBottom:14,fontWeight:600}}>{food.unit}</div>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:16}}>
+                      {[["熱量",food.calories,"kcal","var(--brown)"],["蛋白質",food.protein,"g","var(--green)"],["脂肪",food.fat,"g","var(--amber)"],["碳水",food.carbs,"g","var(--brown2)"]].map(([label,val,unit,color])=>(
+                        <div key={label} style={{background:"var(--cream2)",borderRadius:14,padding:"10px 4px",textAlign:"center"}}>
+                          <div style={{fontSize:18,fontWeight:900,color,lineHeight:1.1}}>{val}</div>
+                          <div style={{fontSize:9,color:"var(--brown3)",marginTop:1}}>{unit}</div>
+                          <div style={{fontSize:10,color:"var(--brown2)",marginTop:2,fontWeight:600}}>{label}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <BigBtn onClick={()=>addRecord(food)} bg="var(--green)">✅ 加入今日紀錄</BigBtn>
+                  </Card>
+                )}
+              </div>
+            )}
+
+            {/* Body */}
+            {page==="body"&&<BodyPage/>}
+
+            {/* Settings */}
+            {page==="settings"&&(
+              <div style={{padding:"14px 14px 0"}} className="fade-up">
+                <Card style={{marginBottom:12}}>
+                  <div style={{fontWeight:900,fontSize:15,marginBottom:16}}>個人設定</div>
+                  {[
+                    {label:"🔑 Gemini API Key",val:apiKey,set:setApiKey,type:"password",ph:"貼上你的 API Key",sfx:null},
+                    {label:"🔥 每日目標熱量（TDEE）",val:tdee,set:v=>setTdee(Number(v)),type:"number",ph:"2000",sfx:"kcal"},
+                    {label:"⚠️ 單餐預警熱量",val:warnCal,set:v=>setWarnCal(Number(v)),type:"number",ph:"500",sfx:"kcal"},
+                  ].map(({label,val,set,type,ph,sfx})=>(
+                    <div key={label} style={{marginBottom:16}}>
+                      <label style={{display:"block",fontWeight:800,marginBottom:8,fontSize:13,color:"var(--brown2)"}}>{label}</label>
+                      <div style={{position:"relative"}}>
+                        <input type={type} value={val} onChange={e=>set(e.target.value)} placeholder={ph} style={{...iSt,paddingRight:sfx?52:14}}/>
+                        {sfx&&<span style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)",fontSize:12,color:"var(--brown3)",fontWeight:700,pointerEvents:"none"}}>{sfx}</span>}
+                      </div>
+                    </div>
+                  ))}
+                  <BigBtn onClick={saveSettings}>💾 儲存設定</BigBtn>
+                </Card>
+                <Card style={{marginBottom:12,background:"var(--greenL)",border:"1px solid #C8DFD0"}}>
+                  <div style={{fontWeight:800,fontSize:13,color:"var(--green)",marginBottom:8}}>🗂️ 食物資料來源</div>
+                  <div style={{fontSize:12,color:"var(--brown2)",lineHeight:1.7}}>本 App 收錄台灣衛福部「食品營養成分資料庫 2024」170 種日常食物，數值基準為每 100g 可食部分，數據準確可信。</div>
+                </Card>
+                <Card style={{marginBottom:12,background:"var(--amberL)",border:"1px solid #E8CCAA"}}>
+                  <div style={{fontWeight:800,fontSize:13,color:"var(--amber)",marginBottom:8}}>💡 如何取得免費 Gemini API Key？</div>
+                  <div style={{fontSize:12,color:"var(--brown2)",lineHeight:1.7}}>前往 <b>aistudio.google.com</b> → 登入 Google 帳號 → 點選「Get API Key」，即可免費取得 Gemini 1.5 Flash 使用額度。</div>
+                </Card>
+                <BigBtn onClick={()=>{if(confirm("確定清除今日所有飲食紀錄？")){setRecords([]);setPage("dash");}}} bg="var(--red)" outline={true}>🗑️ 清除今日飲食紀錄</BigBtn>
+              </div>
+            )}
+          </main>
+        </div>
+      );
+    }
+
+    // ── Mount ────────────────────────────────────────────────────────────────────
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App/>);
+  </script>
+
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/sw.js')
+          .then(function (reg) {
+            console.log('[PWA] Service Worker registered:', reg.scope);
+          })
+          .catch(function (err) {
+            console.warn('[PWA] Service Worker registration failed:', err);
+          });
+      });
+    }
+  </script>
+</body>
+</html>
